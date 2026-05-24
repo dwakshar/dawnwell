@@ -1,7 +1,7 @@
-import React from 'react';
-import { Text, type TextStyle, type TextProps } from 'react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import type { ColorKey } from '@/theme/tokens';
+import React from 'react';
+import { Text, type TextProps, type TextStyle } from 'react-native';
 
 export type TypographyProps = {
   color?: ColorKey;
@@ -40,17 +40,16 @@ function makeTypography(
             textAlign: align,
           },
           style,
-        ]}
-      >
+        ]}>
         {children}
       </Text>
     );
   };
 }
 
-export const Display = makeTypography('Fraunces_400Regular', 40, 48, '400');
-export const Title = makeTypography('Fraunces_400Regular', 28, 34, '400');
-export const Heading = makeTypography('Fraunces_400Regular', 20, 26, '400');
+export const Display = makeTypography('Archivo_500Medium', 40, 48, '500');
+export const Title = makeTypography('Archivo_500Medium', 28, 34, '500');
+export const Heading = makeTypography('Archivo_500Medium', 20, 26, '500');
 export const Body = makeTypography('Inter_400Regular', 16, 24, '400');
 export const Label = makeTypography('Inter_400Regular', 14, 20, '400');
 export const Caption = makeTypography('Inter_400Regular', 12, 16, '400');

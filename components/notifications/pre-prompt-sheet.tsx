@@ -113,7 +113,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   heading: {
-    fontFamily: 'Fraunces_400Regular',
     fontSize: 22,
     lineHeight: 30,
     marginBottom: 16,

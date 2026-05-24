@@ -1,3 +1,15 @@
+import {
+  addMonths,
+  eachDayOfInterval,
+  endOfMonth,
+  format,
+  getDay,
+  isSameMonth,
+  startOfMonth,
+  subMonths,
+} from 'date-fns';
+import { router, useFocusEffect } from 'expo-router';
+import { Check, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   Pressable,
@@ -7,42 +19,29 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
-import {
-  addMonths,
-  eachDayOfInterval,
-  endOfMonth,
-  format,
-  getDay,
-  isSameMonth,
-  parseISO,
-  startOfMonth,
-  subMonths,
-} from 'date-fns';
-import { Check, ChevronLeft, ChevronRight } from 'lucide-react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useNavigationStore } from '@/stores/navigation-store';
 
-import { useTheme } from '@/theme/ThemeProvider';
-import { Body, Caption, Heading, Label, Mono, Title } from '@/components/ui/typography';
-import Button from '@/components/ui/button';
-import IconButton from '@/components/ui/icon-button';
-import HabitDot from '@/components/ui/habit-dot';
-import Skeleton from '@/components/ui/skeleton';
-import Reveal from '@/components/ui/reveal';
 import BottomSheet, { BottomSheetScrollView } from '@/components/ui/bottom-sheet';
-import { getCellInfo } from '@/lib/history';
-import { getTodayISO } from '@/lib/today';
+import Button from '@/components/ui/button';
+import HabitDot from '@/components/ui/habit-dot';
+import IconButton from '@/components/ui/icon-button';
+import Reveal from '@/components/ui/reveal';
+import Skeleton from '@/components/ui/skeleton';
+import { Body, Caption, Heading, Label, Mono, Title } from '@/components/ui/typography';
+import type { Habit } from '@/db/schema';
 import {
   useDayDetail,
   useEarliestActivityDate,
   useHistoryHabits,
   useMonthCheckIns,
 } from '@/hooks/use-history';
-import type { Habit } from '@/db/schema';
+import { getCellInfo } from '@/lib/history';
 import type { DayCheckIn } from '@/lib/queries/history';
+import { getTodayISO } from '@/lib/today';
+import { useTheme } from '@/theme/ThemeProvider';
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 
@@ -97,7 +96,7 @@ export default function HistoryScreen() {
   const accentColor =
     selectedHabitId === SELECTED_HABIT_ID_ALL
       ? undefined
-      : (selectedHabit?.color ?? undefined);
+      : selectedHabit?.color ?? undefined;
 
   // ── Month bounds ────────────────────────────────────────────────────────
   const canGoBack = useMemo(() => {
@@ -158,8 +157,8 @@ export default function HistoryScreen() {
             {habitCount === 0
               ? 'No habits yet'
               : habitCount === 1
-                ? '1 habit tracked'
-                : `${habitCount} habits tracked`}
+              ? '1 habit tracked'
+              : `${habitCount} habits tracked`}
           </Label>
         )}
       </View>
@@ -205,8 +204,7 @@ export default function HistoryScreen() {
                   colors={[colors.accent]}
                 />
               ) : undefined
-            }
-          >
+            }>
             {checkInsError ? (
               <View style={styles.errorState}>
                 <Body color="ink-soft" align="center">
@@ -227,11 +225,7 @@ export default function HistoryScreen() {
                 />
 
                 {hasHabitsNoCheckIns && (
-                  <Caption
-                    color="ink-mute"
-                    align="center"
-                    style={styles.emptyCaption}
-                  >
+                  <Caption color="ink-mute" align="center" style={styles.emptyCaption}>
                     Check in on Today to start filling this in.
                   </Caption>
                 )}
@@ -268,8 +262,7 @@ function HabitSelector({ habits, selectedId, onSelect }: HabitSelectorProps) {
         styles.selectorContent,
         { paddingHorizontal: H_PAD, gap: 8 },
       ]}
-      style={styles.selector}
-    >
+      style={styles.selector}>
       {/* "All habits" pill */}
       <SelectorPill
         label="All habits"
@@ -313,16 +306,8 @@ function SelectorPill({ label, selected, habitColor, onPress }: SelectorPillProp
           borderColor: colors.hairline,
           borderRadius: radii.pill,
         },
-      ]}
-    >
-      {habitColor && (
-        <View
-          style={[
-            styles.pillDot,
-            { backgroundColor: habitColor },
-          ]}
-        />
-      )}
+      ]}>
+      {habitColor && <View style={[styles.pillDot, { backgroundColor: habitColor }]} />}
       <Label style={{ color: selected ? colors.ink : colors['ink-soft'] }}>{label}</Label>
     </Pressable>
   );
@@ -370,8 +355,7 @@ function MonthStrip({
             <Pressable
               onPress={onToday}
               accessibilityRole="button"
-              accessibilityLabel="Jump to current month"
-            >
+              accessibilityLabel="Jump to current month">
               <Label color="accent">Today</Label>
             </Pressable>
           </Reveal>
@@ -477,26 +461,20 @@ function HeatmapCalendar({
 
       {/* Day rows */}
       {rows.map((row, rowIdx) => (
-        <View key={rowIdx} style={[styles.calRow, { gap: CELL_GAP, marginBottom: CELL_GAP }]}>
+        <View
+          key={rowIdx}
+          style={[styles.calRow, { gap: CELL_GAP, marginBottom: CELL_GAP }]}>
           {row.map((cell) => {
             const idx = globalCellIndex++;
             if (cell.type === 'empty') {
               return (
-                <View
-                  key={cell.key}
-                  style={{ width: cellSize, height: cellSize }}
-                />
+                <View key={cell.key} style={{ width: cellSize, height: cellSize }} />
               );
             }
 
             if (isLoading) {
               return (
-                <Skeleton
-                  key={cell.key}
-                  width={cellSize}
-                  height={cellSize}
-                  radius={10}
-                />
+                <Skeleton key={cell.key} width={cellSize} height={cellSize} radius={10} />
               );
             }
 
@@ -515,29 +493,31 @@ function HeatmapCalendar({
             const isToday = cell.dateISO === todayISO;
             const isFuture = cell.dateISO > todayISO;
 
-            const borderStyle =
-              isToday
-                ? {
-                    borderWidth: 1.5,
-                    borderColor:
-                      cellInfo.state === 'complete'
-                        ? 'rgba(255,255,255,0.75)'
-                        : colors.accent,
-                  }
-                : cellInfo.borderColor
-                  ? { borderWidth: StyleSheet.hairlineWidth, borderColor: cellInfo.borderColor }
-                  : {};
+            const borderStyle = isToday
+              ? {
+                  borderWidth: 1.5,
+                  borderColor:
+                    cellInfo.state === 'complete'
+                      ? 'rgba(255,255,255,0.75)'
+                      : colors.accent,
+                }
+              : cellInfo.borderColor
+              ? {
+                  borderWidth: StyleSheet.hairlineWidth,
+                  borderColor: cellInfo.borderColor,
+                }
+              : {};
 
             const dayNumber = format(cell.date, 'd');
-            const a11yPct = Math.round(
-              target > 0 ? (completed / target) * 100 : 0,
-            );
-            const a11yLabel =
-              isFuture
-                ? `${format(cell.date, 'MMMM d')}, future`
-                : target === 0
-                  ? `${format(cell.date, 'MMMM d')}, no data`
-                  : `${format(cell.date, 'MMMM d')}, ${completed} of ${target} completed, ${a11yPct} percent`;
+            const a11yPct = Math.round(target > 0 ? (completed / target) * 100 : 0);
+            const a11yLabel = isFuture
+              ? `${format(cell.date, 'MMMM d')}, future`
+              : target === 0
+              ? `${format(cell.date, 'MMMM d')}, no data`
+              : `${format(
+                  cell.date,
+                  'MMMM d',
+                )}, ${completed} of ${target} completed, ${a11yPct} percent`;
 
             const cellContent = (
               <Pressable
@@ -553,8 +533,7 @@ function HeatmapCalendar({
                     opacity: isFuture ? 0.3 : 1,
                     ...borderStyle,
                   },
-                ]}
-              >
+                ]}>
                 {cellInfo.state !== 'future' && (
                   <Label
                     style={{
@@ -562,9 +541,10 @@ function HeatmapCalendar({
                       fontFamily: 'Inter_600SemiBold',
                       lineHeight: cellSize,
                       color:
-                        cellInfo.state === 'no-data' ? colors['ink-mute'] : cellInfo.textColor,
-                    }}
-                  >
+                        cellInfo.state === 'no-data'
+                          ? colors['ink-mute']
+                          : cellInfo.textColor,
+                    }}>
                     {cellInfo.state === 'no-data' ? '·' : dayNumber}
                   </Label>
                 )}
@@ -578,8 +558,7 @@ function HeatmapCalendar({
             return (
               <Animated.View
                 key={cell.key}
-                entering={FadeIn.duration(180).delay(idx * 8)}
-              >
+                entering={FadeIn.duration(180).delay(idx * 8)}>
                 {cellContent}
               </Animated.View>
             );
@@ -610,23 +589,15 @@ function DayDetailSheet({ open, date, onClose }: DayDetailSheetProps) {
     pct === 100 ? 'sage' : pct > 0 ? 'amber' : 'ink-mute';
 
   return (
-    <BottomSheet
-      open={open}
-      onClose={onClose}
-      snapPoints={['45%', '85%']}
-      raw
-    >
+    <BottomSheet open={open} onClose={onClose} snapPoints={['45%', '85%']} raw>
       <View
         // accessibilityViewIsModal so VoiceOver traps focus inside on iOS
         accessibilityViewIsModal
-        style={styles.sheetContainer}
-      >
+        style={styles.sheetContainer}>
         {/* Sheet header */}
         {date && (
           <View style={[styles.sheetHeader, { borderBottomColor: colors.hairline }]}>
-            <Heading style={styles.sheetTitle}>
-              {format(date, 'EEEE, MMMM d')}
-            </Heading>
+            <Heading style={styles.sheetTitle}>{format(date, 'EEEE, MMMM d')}</Heading>
 
             {!isLoading && entries.length > 0 && (
               <View style={styles.sheetStatRow}>
@@ -641,18 +612,15 @@ function DayDetailSheet({ open, date, onClose }: DayDetailSheetProps) {
                         pillColor === 'sage'
                           ? colors.sage
                           : pillColor === 'amber'
-                            ? colors.amber
-                            : colors['surface-2'],
+                          ? colors.amber
+                          : colors['surface-2'],
                     },
-                  ]}
-                >
+                  ]}>
                   <Caption
                     style={{
-                      color:
-                        pillColor === 'ink-mute' ? colors['ink-mute'] : '#ffffff',
+                      color: pillColor === 'ink-mute' ? colors['ink-mute'] : '#ffffff',
                       fontFamily: 'Inter_600SemiBold',
-                    }}
-                  >
+                    }}>
                     {`${pct}%`}
                   </Caption>
                 </View>
@@ -687,10 +655,7 @@ function DayDetailSheet({ open, date, onClose }: DayDetailSheetProps) {
               <React.Fragment key={entry.habit.id}>
                 {i > 0 && (
                   <View
-                    style={[
-                      styles.sheetHairline,
-                      { backgroundColor: colors.hairline },
-                    ]}
+                    style={[styles.sheetHairline, { backgroundColor: colors.hairline }]}
                   />
                 )}
                 <View style={styles.sheetRow}>
@@ -699,8 +664,8 @@ function DayDetailSheet({ open, date, onClose }: DayDetailSheetProps) {
                       entry.completed >= entry.target
                         ? 'complete'
                         : entry.completed > 0
-                          ? 'partial'
-                          : 'empty'
+                        ? 'partial'
+                        : 'empty'
                     }
                     size="sm"
                     color={entry.habit.color}
@@ -737,8 +702,7 @@ function EmptyNoHabits() {
           variant="primary"
           size="md"
           accessibilityLabel="Create your first habit"
-          onPress={() => router.navigate('/')}
-        >
+          onPress={() => router.navigate('/')}>
           Create habit
         </Button>
       </View>

@@ -1,3 +1,5 @@
+import { format } from 'date-fns';
+import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   Pressable,
@@ -8,26 +10,29 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useReducedMotion } from 'react-native-reanimated';
-import { router } from 'expo-router';
-import { format } from 'date-fns';
 import { BarChart } from 'react-native-gifted-charts/dist/BarChart';
 import { LineChart } from 'react-native-gifted-charts/dist/LineChart';
+import { useReducedMotion } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useTheme } from '@/theme/ThemeProvider';
-import { Body, Caption, Display, Label, Mono, Title } from '@/components/ui/typography';
+import EmptyNoHabits from '@/components/empty-states/no-habits';
 import Card from '@/components/ui/card';
 import Pill from '@/components/ui/pill';
 import Skeleton from '@/components/ui/skeleton';
 import StreakFlame from '@/components/ui/streak-flame';
-import EmptyNoHabits from '@/components/empty-states/no-habits';
-import { useRangeAggregate, useRangeSeries, useScorecards } from '@/hooks/use-stats';
+import { Body, Caption, Display, Label, Mono, Title } from '@/components/ui/typography';
 import { useEarliestActivityDate } from '@/hooks/use-history';
+import { useRangeAggregate, useRangeSeries, useScorecards } from '@/hooks/use-stats';
 import { getCellInfo } from '@/lib/history';
+import type {
+  RangeAggregateResult,
+  ScorecardEntry,
+  SeriesPoint,
+  StatRange,
+} from '@/lib/queries/stats';
 import { getTodayISO } from '@/lib/today';
 import { useNavigationStore } from '@/stores/navigation-store';
-import type { StatRange, SeriesPoint, ScorecardEntry, RangeAggregateResult } from '@/lib/queries/stats';
+import { useTheme } from '@/theme/ThemeProvider';
 
 const H_PAD = 20;
 const CARD_PAD = 20;
@@ -78,7 +83,10 @@ export default function StatsScreen() {
   const headerSub = useMemo(() => {
     if (habitCount === 0) return 'No habits yet';
     if (earliestDate) {
-      return `Tracking ${habitCount} habit${habitCount === 1 ? '' : 's'} since ${format(earliestDate, 'MMM d')}`;
+      return `Tracking ${habitCount} habit${habitCount === 1 ? '' : 's'} since ${format(
+        earliestDate,
+        'MMM d',
+      )}`;
     }
     return `${habitCount} habit${habitCount === 1 ? '' : 's'} tracked`;
   }, [habitCount, earliestDate]);
@@ -103,8 +111,7 @@ export default function StatsScreen() {
               tintColor={colors.accent}
               colors={[colors.accent]}
             />
-          }
-        >
+          }>
           {/* index 0 — header */}
           <View style={[styles.header, { paddingHorizontal: H_PAD }]}>
             <Display style={styles.headerTitle}>Stats</Display>
@@ -112,7 +119,11 @@ export default function StatsScreen() {
           </View>
 
           {/* index 1 — range selector (sticky) */}
-          <View style={[styles.rangeTabs, { paddingHorizontal: H_PAD, backgroundColor: colors.bg }]}>
+          <View
+            style={[
+              styles.rangeTabs,
+              { paddingHorizontal: H_PAD, backgroundColor: colors.bg },
+            ]}>
             <SegmentedControl
               options={[
                 { value: 'week', label: 'Week' },
@@ -151,23 +162,29 @@ export default function StatsScreen() {
             <View style={styles.scorecardsHeader}>
               <Title style={styles.scorecardsTitle}>By habit</Title>
               <Caption color="ink-mute">
-                {range === 'week' ? 'this week' : range === 'month' ? 'this month' : 'all time'}
+                {range === 'week'
+                  ? 'this week'
+                  : range === 'month'
+                  ? 'this month'
+                  : 'all time'}
               </Caption>
             </View>
 
-            {isLoading
-              ? [0, 1, 2].map((i) => (
-                  <View key={i} style={styles.scorecardGap}>
-                    <SkeletonCard height={72} />
-                  </View>
-                ))
-              : scorecardsError
-                ? <ErrorCard />
-                : scorecards?.map((sc) => (
-                    <View key={sc.habitId} style={styles.scorecardGap}>
-                      <ScorecardItem scorecard={sc} range={range} />
-                    </View>
-                  ))}
+            {isLoading ? (
+              [0, 1, 2].map((i) => (
+                <View key={i} style={styles.scorecardGap}>
+                  <SkeletonCard height={72} />
+                </View>
+              ))
+            ) : scorecardsError ? (
+              <ErrorCard />
+            ) : (
+              scorecards?.map((sc) => (
+                <View key={sc.habitId} style={styles.scorecardGap}>
+                  <ScorecardItem scorecard={sc} range={range} />
+                </View>
+              ))
+            )}
           </View>
         </ScrollView>
       )}
@@ -191,8 +208,7 @@ function SegmentedControl({ options, selected, onSelect }: SegmentedControlProps
       style={[
         styles.segmentedTrack,
         { backgroundColor: colors['surface-2'], borderRadius: radii.pill },
-      ]}
-    >
+      ]}>
       {options.map((opt) => {
         const isSelected = opt.value === selected;
         return (
@@ -212,8 +228,7 @@ function SegmentedControl({ options, selected, onSelect }: SegmentedControlProps
                 shadowOffset: { width: 0, height: 1 },
                 elevation: 2,
               },
-            ]}
-          >
+            ]}>
             <Label style={{ color: isSelected ? colors.ink : colors['ink-soft'] }}>
               {opt.label}
             </Label>
@@ -252,8 +267,9 @@ function SummaryCard({ aggregate, range }: SummaryCardProps) {
       <View style={styles.summaryRow1}>
         <Display
           style={styles.summaryBigPct}
-          accessibilityLabel={`${aggregate.completionPct} percent completion ${range === 'week' ? 'this week' : range === 'month' ? 'this month' : 'all time'}`}
-        >
+          accessibilityLabel={`${aggregate.completionPct} percent completion ${
+            range === 'week' ? 'this week' : range === 'month' ? 'this month' : 'all time'
+          }`}>
           {`${aggregate.completionPct}%`}
         </Display>
         {aggregate.currentLongestStreakDays >= 1 && (
@@ -298,7 +314,11 @@ function ChartCard({ series, range, screenWidth }: ChartCardProps) {
   const allZero = series.every((s) => s.pct === 0);
 
   const cardTitle =
-    range === 'week' ? 'This week' : range === 'month' ? 'Daily completion — month' : 'Last 12 weeks';
+    range === 'week'
+      ? 'This week'
+      : range === 'month'
+      ? 'Daily completion — month'
+      : 'Last 12 weeks';
 
   const a11yLabel = useMemo(() => {
     if (series.length === 0) return 'No data';
@@ -306,7 +326,15 @@ function ChartCard({ series, range, screenWidth }: ChartCardProps) {
     const max = series.reduce((a, b) => (a.pct >= b.pct ? a : b));
     const min = series.reduce((a, b) => (a.pct <= b.pct ? a : b));
     const kind = range === 'alltime' ? 'Line chart' : 'Bar chart';
-    return `${kind}, ${range === 'week' ? `week of ${series[0]?.label}` : range === 'month' ? 'last 30 days' : 'last 12 weeks'}, average ${avg} percent. Highest ${max.label} ${max.pct} percent. Lowest ${min.label} ${min.pct} percent.`;
+    return `${kind}, ${
+      range === 'week'
+        ? `week of ${series[0]?.label}`
+        : range === 'month'
+        ? 'last 30 days'
+        : 'last 12 weeks'
+    }, average ${avg} percent. Highest ${max.label} ${max.pct} percent. Lowest ${
+      min.label
+    } ${min.pct} percent.`;
   }, [series, range]);
 
   return (
@@ -368,7 +396,12 @@ function CompletionBarChart({
   const initialSpacing = 10;
   const spacing =
     range === 'week'
-      ? Math.max(4, Math.floor((chartWidth - barWidth * n - initialSpacing * 2) / Math.max(n - 1, 1)))
+      ? Math.max(
+          4,
+          Math.floor(
+            (chartWidth - barWidth * n - initialSpacing * 2) / Math.max(n - 1, 1),
+          ),
+        )
       : 3;
 
   const data = series.map((s) => ({
@@ -384,8 +417,7 @@ function CompletionBarChart({
               color: inkMuteColor,
               fontFamily: 'Inter_400Regular',
               lineHeight: 11,
-            }}
-          >
+            }}>
             {`${s.pct}%`}
           </Text>
         )}
@@ -405,7 +437,10 @@ function CompletionBarChart({
   }));
 
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={range === 'month'}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      scrollEnabled={range === 'month'}>
       <BarChart
         data={data}
         width={range === 'week' ? chartWidth : undefined}
@@ -451,7 +486,10 @@ function AllTimeLineChart({
   inkMuteColor,
   isReducedMotion,
 }: LineChartInnerProps) {
-  const spacing = Math.max(8, Math.floor((chartWidth - 20) / Math.max(series.length - 1, 1)));
+  const spacing = Math.max(
+    8,
+    Math.floor((chartWidth - 20) / Math.max(series.length - 1, 1)),
+  );
 
   const data = series.map((s, idx) => ({
     value: s.pct,
@@ -510,13 +548,20 @@ function ScorecardItem({ scorecard, range }: ScorecardItemProps) {
   const cellSize = range === 'alltime' ? 10 : 8;
 
   return (
-    <Card onPress={handlePress} accessibilityLabel={a11yLabel} style={styles.scorecardCard}>
+    <Card
+      onPress={handlePress}
+      accessibilityLabel={a11yLabel}
+      style={styles.scorecardCard}>
       <View style={styles.scorecardRow}>
         {/* Left */}
         <View style={styles.scorecardLeft}>
           <View style={styles.scorecardNameRow}>
-            <View style={[styles.scorecardDot, { backgroundColor: scorecard.colorTag }]} />
-            <Body style={styles.scorecardName} numberOfLines={1}>{scorecard.name}</Body>
+            <View
+              style={[styles.scorecardDot, { backgroundColor: scorecard.colorTag }]}
+            />
+            <Body style={styles.scorecardName} numberOfLines={1}>
+              {scorecard.name}
+            </Body>
           </View>
           <Caption color="ink-mute">{`${scorecard.targetPerDay}× per day`}</Caption>
         </View>
@@ -571,7 +616,11 @@ function SkeletonCard({ height }: { height: number }) {
 function ErrorCard() {
   const { colors, radii } = useTheme();
   return (
-    <View style={[styles.errorCard, { backgroundColor: colors.surface, borderRadius: radii.card }]}>
+    <View
+      style={[
+        styles.errorCard,
+        { backgroundColor: colors.surface, borderRadius: radii.card },
+      ]}>
       <Body color="ink-soft" align="center">
         Couldn't load. Pull down to retry.
       </Body>
@@ -587,7 +636,7 @@ const styles = StyleSheet.create({
   content: { paddingTop: 8 },
 
   header: { paddingBottom: 4, gap: 2 },
-  headerTitle: { fontSize: 32, lineHeight: 40, fontFamily: 'Fraunces_400Regular' },
+  headerTitle: { fontSize: 32, lineHeight: 40 },
 
   rangeTabs: {
     paddingVertical: 10,
@@ -611,7 +660,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
   },
-  summaryBigPct: { fontSize: 56, lineHeight: 64, fontFamily: 'Fraunces_400Regular' },
+  summaryBigPct: { fontSize: 56, lineHeight: 64 },
 
   summaryRow2: {
     flexDirection: 'row',
@@ -624,7 +673,11 @@ const styles = StyleSheet.create({
 
   summaryRow3: { alignItems: 'flex-start' },
 
-  chartTitle: { fontSize: 18, lineHeight: 24, fontFamily: 'Fraunces_400Regular', marginBottom: 12 },
+  chartTitle: {
+    fontSize: 18,
+    lineHeight: 24,
+    marginBottom: 12,
+  },
   chartEmpty: { paddingVertical: 32, alignItems: 'center' },
 
   scorecardsHeader: {
@@ -634,7 +687,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 4,
   },
-  scorecardsTitle: { fontSize: 20, lineHeight: 26, fontFamily: 'Fraunces_400Regular' },
+  scorecardsTitle: { fontSize: 20, lineHeight: 26 },
   scorecardGap: { marginBottom: 12 },
 
   scorecardCard: { padding: 16 },

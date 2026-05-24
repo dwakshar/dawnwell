@@ -181,7 +181,7 @@ function SheetHeader({
           onPress={onCancel}
           accessibilityLabel="Cancel"
         />
-        <Heading style={{ fontFamily: 'Fraunces_400Regular', fontSize: 18 }}>
+        <Heading style={{ fontSize: 18 }}>
           {mode === 'create' ? 'New habit' : 'Edit habit'}
         </Heading>
         <Button

@@ -1,7 +1,7 @@
-import { View, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Body, Title } from '@/components/ui/typography';
 import { useTheme } from '@/theme/ThemeProvider';
-import { Title, Body } from '@/components/ui/typography';
+import { StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
   const { colors, spacing } = useTheme();

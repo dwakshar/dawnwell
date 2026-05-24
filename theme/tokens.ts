@@ -73,9 +73,9 @@ const lineHeight = {
 } as const;
 
 const fontFamily = {
-  display: 'Fraunces_400Regular',
-  displayMedium: 'Fraunces_500Medium',
-  displayBold: 'Fraunces_700Bold',
+  display: 'Archivo_400Regular',
+  displayMedium: 'Archivo_500Medium',
+  displayBold: 'Archivo_700Bold',
   sans: 'Inter_400Regular',
   sansMedium: 'Inter_500Medium',
   sansSemibold: 'Inter_600SemiBold',

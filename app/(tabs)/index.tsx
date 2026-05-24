@@ -1,26 +1,26 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { format } from 'date-fns';
+import { Plus } from 'lucide-react-native';
 import React, { useCallback, useRef } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { format } from 'date-fns';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react-native';
 
-import { useTheme } from '@/theme/ThemeProvider';
-import { Body, Caption, Display, Heading } from '@/components/ui/typography';
+import HabitSheet, { type HabitSheetHandle } from '@/components/habits/habit-sheet';
+import HabitRow from '@/components/today/habit-row';
 import Button from '@/components/ui/button';
 import IconButton from '@/components/ui/icon-button';
 import Pill from '@/components/ui/pill';
-import Skeleton from '@/components/ui/skeleton';
 import Reveal from '@/components/ui/reveal';
+import Skeleton from '@/components/ui/skeleton';
 import StreakFlame from '@/components/ui/streak-flame';
-import HabitRow from '@/components/today/habit-row';
-import HabitSheet, { type HabitSheetHandle } from '@/components/habits/habit-sheet';
-import { queryKeys } from '@/lib/query-keys';
-import { getTodayView, type TodayRitual, type TodayView } from '@/lib/queries/today';
+import { Body, Caption, Display, Heading } from '@/components/ui/typography';
+import { getGreeting } from '@/lib/greeting';
 import { addCheckIn, removeLastCheckIn } from '@/lib/mutations/check-in';
 import { dismissDeliveredHabitReminder } from '@/lib/notifications';
+import { getTodayView, type TodayRitual, type TodayView } from '@/lib/queries/today';
+import { queryKeys } from '@/lib/query-keys';
 import { getTodayISO } from '@/lib/today';
-import { getGreeting } from '@/lib/greeting';
+import { useTheme } from '@/theme/ThemeProvider';
 
 export default function TodayScreen() {
   const { colors, spacing } = useTheme();
@@ -77,7 +77,8 @@ export default function TodayScreen() {
   });
 
   const uncheckMutation = useMutation({
-    mutationFn: ({ habitId }: { habitId: string }) => removeLastCheckIn(habitId, todayISO),
+    mutationFn: ({ habitId }: { habitId: string }) =>
+      removeLastCheckIn(habitId, todayISO),
     onMutate: async ({ habitId }) => {
       await queryClientInstance.cancelQueries({ queryKey });
       const prev = queryClientInstance.getQueryData<TodayView>(queryKey);
@@ -143,8 +144,7 @@ export default function TodayScreen() {
             colors={[colors.accent]}
           />
         }
-        showsVerticalScrollIndicator={false}
-      >
+        showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerRow}>
@@ -165,7 +165,10 @@ export default function TodayScreen() {
         {/* Summary pills */}
         {!isLoading && totalCount > 0 && (
           <View style={styles.pillRow}>
-            <Pill variant={totalCompleted === totalCount && totalCount > 0 ? 'accent' : 'default'}>
+            <Pill
+              variant={
+                totalCompleted === totalCount && totalCount > 0 ? 'accent' : 'default'
+              }>
               {`${totalCompleted} of ${totalCount} done`}
             </Pill>
             {maxStreak >= 2 && (
@@ -191,8 +194,7 @@ export default function TodayScreen() {
                 variant="primary"
                 size="md"
                 accessibilityLabel="Create your first habit"
-                onPress={() => sheetRef.current?.openCreate()}
-              >
+                onPress={() => sheetRef.current?.openCreate()}>
                 Create a habit
               </Button>
             </View>
@@ -232,7 +234,13 @@ type RitualSectionProps = {
   onAddHabit: () => void;
 };
 
-function RitualSection({ ritual, onCheck, onUncheck, onEdit, onAddHabit }: RitualSectionProps) {
+function RitualSection({
+  ritual,
+  onCheck,
+  onUncheck,
+  onEdit,
+  onAddHabit,
+}: RitualSectionProps) {
   const { colors, radii } = useTheme();
   const completed = ritual.habits.filter((h) => h.isComplete).length;
   const total = ritual.habits.length;
@@ -257,8 +265,7 @@ function RitualSection({ ritual, onCheck, onUncheck, onEdit, onAddHabit }: Ritua
         style={[
           styles.card,
           { backgroundColor: colors.surface, borderRadius: radii.card },
-        ]}
-      >
+        ]}>
         {ritual.habits.map((habit, index) => (
           <React.Fragment key={habit.id}>
             {index > 0 && (
@@ -289,7 +296,11 @@ function LoadingSkeleton() {
             <Skeleton width={72} height={14} radius={4} />
             <Skeleton width={28} height={11} radius={4} />
           </View>
-          <View style={[styles.card, { backgroundColor: colors.surface, borderRadius: radii.card }]}>
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: colors.surface, borderRadius: radii.card },
+            ]}>
             {[0, 1, 2].map((j) => (
               <React.Fragment key={j}>
                 {j > 0 && (

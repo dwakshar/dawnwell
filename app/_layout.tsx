@@ -1,8 +1,9 @@
 import {
-  Fraunces_400Regular,
-  Fraunces_500Medium,
-  Fraunces_700Bold,
-} from '@expo-google-fonts/fraunces';
+  Archivo_400Regular,
+  Archivo_500Medium,
+  Archivo_600SemiBold,
+  Archivo_700Bold,
+} from '@expo-google-fonts/archivo';
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -13,6 +14,7 @@ import {
   JetBrainsMono_400Regular,
   JetBrainsMono_500Medium,
 } from '@expo-google-fonts/jetbrains-mono';
+import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import { useFonts } from 'expo-font';
 import * as Linking from 'expo-linking';
 import { type Href, Stack, useRouter } from 'expo-router';
@@ -21,35 +23,42 @@ import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { nanoid } from 'nanoid/non-secure';
 import { useEffect, useState } from 'react';
-import { AppState, type AppStateStatus, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import {
+  AppState,
+  type AppStateStatus,
+  Text,
+  TouchableOpacity,
+  useColorScheme,
+  View,
+} from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 
-import { QueryClientProvider } from '@tanstack/react-query';
-import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
-import { queryClient } from '@/lib/query-client';
-import { tokens } from '@/theme/tokens';
 import { db } from '@/db/client';
 import migrations from '@/db/migrations/migrations';
 import { seedIfEmpty } from '@/db/seed';
-import { storage, StorageKey } from '@/lib/storage';
-import { supabase } from '@/lib/supabase';
-import { useOnboardingStore } from '@/stores/onboarding-store';
-import { useAuthStore } from '@/stores/auth-store';
 import {
   configureNotificationHandler,
   ensureAndroidChannel,
   rescheduleAll,
   setupTapHandler,
 } from '@/lib/notifications';
+import { queryClient } from '@/lib/query-client';
+import { storage, StorageKey } from '@/lib/storage';
+import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/stores/auth-store';
+import { useOnboardingStore } from '@/stores/onboarding-store';
+import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
+import { tokens } from '@/theme/tokens';
+import { QueryClientProvider } from '@tanstack/react-query';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
-    Fraunces_400Regular,
-    Fraunces_500Medium,
-    Fraunces_700Bold,
+    Archivo_400Regular,
+    Archivo_500Medium,
+    Archivo_600SemiBold,
+    Archivo_700Bold,
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
@@ -99,18 +108,25 @@ function DbBootstrap() {
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [migrationsOk, retryKey]);
 
   const error = migrationError ?? initError;
   if (error) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+      <View
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
         <Text style={{ color: '#c2410c', marginBottom: 12, textAlign: 'center' }}>
-          Failed to initialize database:{'\n'}{error.message}
+          Failed to initialize database:{'\n'}
+          {error.message}
         </Text>
         <TouchableOpacity
-          onPress={() => { setInitError(null); setRetryKey((k) => k + 1); }}
+          onPress={() => {
+            setInitError(null);
+            setRetryKey((k) => k + 1);
+          }}
           style={{
             backgroundColor: '#c2410c',
             paddingHorizontal: 24,
