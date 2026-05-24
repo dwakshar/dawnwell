@@ -24,7 +24,9 @@ import { useEffect, useState } from 'react';
 import { Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 
+import { QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
+import { queryClient } from '@/lib/query-client';
 import { tokens } from '@/theme/tokens';
 import { db } from '@/db/client';
 import migrations from '@/db/migrations/migrations';
@@ -56,9 +58,11 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <ThemeProvider>
-      <DbBootstrap />
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <DbBootstrap />
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 
