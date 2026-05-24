@@ -38,6 +38,9 @@ export default function TodayScreen() {
     queryFn: () => getTodayView(now),
   });
 
+  const invalidateHistory = () =>
+    queryClientInstance.invalidateQueries({ queryKey: ['history'] });
+
   const checkMutation = useMutation({
     mutationFn: ({ habitId }: { habitId: string }) => addCheckIn(habitId, todayISO),
     onMutate: async ({ habitId }) => {
@@ -64,6 +67,7 @@ export default function TodayScreen() {
     },
     onSettled: () => {
       queryClientInstance.invalidateQueries({ queryKey });
+      invalidateHistory();
     },
   });
 
@@ -93,6 +97,7 @@ export default function TodayScreen() {
     },
     onSettled: () => {
       queryClientInstance.invalidateQueries({ queryKey });
+      invalidateHistory();
     },
   });
 

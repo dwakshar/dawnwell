@@ -3,4 +3,8 @@ export const queryKeys = {
   habits: () => ['habits'] as const,
   todayCheckIns: (dateISO: string) => ['check-ins', 'today', dateISO] as const,
   todayView: (dateISO: string) => ['today', dateISO] as const,
+  historyMonth: (habitId: string, monthKey: string) =>
+    ['history', 'month', habitId, monthKey] as const,
+  historyEarliest: () => ['history', 'earliest'] as const,
+  historyDay: (dateKey: string) => ['history', 'day', dateKey] as const,
 };

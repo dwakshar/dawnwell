@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { BarChart2, BookOpen, Settings, Sun } from 'lucide-react-native';
+import { BarChart2, CalendarDays, Settings, Sun } from 'lucide-react-native';
 import { Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -54,7 +54,7 @@ export default function TabLayout() {
         options={{
           title: 'History',
           tabBarIcon: ({ color, size }) => (
-            <BookOpen color={color} size={size} strokeWidth={1.75} />
+            <CalendarDays color={color} size={size} strokeWidth={1.75} />
           ),
         }}
       />
