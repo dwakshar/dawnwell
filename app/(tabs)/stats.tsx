@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/theme/ThemeProvider';
 
-export default function TodayScreen() {
+export default function StatsScreen() {
   const { colors, fontSize, fontFamily } = useTheme();
 
   return (
@@ -18,7 +18,7 @@ export default function TodayScreen() {
               fontSize: fontSize['3xl'],
             },
           ]}>
-          Today
+          Stats
         </Text>
       </View>
     </SafeAreaView>
