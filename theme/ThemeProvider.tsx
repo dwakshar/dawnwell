@@ -18,7 +18,7 @@ interface ThemeContextValue {
   touchTarget: typeof tokens.touchTarget;
 }
 
-const ThemeContext = createContext<ThemeContextValue | null>(null);
+export const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 interface ThemeProviderProps {
   children: ReactNode;
