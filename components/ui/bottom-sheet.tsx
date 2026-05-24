@@ -1,16 +1,26 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import GorhomBottomSheet, {
   BottomSheetView,
+  BottomSheetScrollView,
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
 import { useTheme } from '@/theme/ThemeProvider';
+
+// Re-export sub-components so feature code never imports @gorhom/bottom-sheet directly
+export { BottomSheetScrollView, BottomSheetView };
 
 export type BottomSheetProps = {
   open: boolean;
   onClose: () => void;
   snapPoints?: (string | number)[];
   children: React.ReactNode;
+  /** When true, renders children directly without a BottomSheetView wrapper —
+   *  use when you need mixed BottomSheetView + BottomSheetScrollView layouts. */
+  raw?: boolean;
+  /** Forwarded to GorhomBottomSheet — set false to block drag-to-dismiss (e.g. unsaved edits). */
+  enablePanDownToClose?: boolean;
+  onChange?: (index: number) => void;
 };
 
 export default function BottomSheet({
@@ -18,6 +28,9 @@ export default function BottomSheet({
   onClose,
   snapPoints = ['50%', '90%'],
   children,
+  raw = false,
+  enablePanDownToClose = true,
+  onChange,
 }: BottomSheetProps) {
   const { colors, radii } = useTheme();
   const sheetRef = useRef<GorhomBottomSheet>(null);
@@ -48,10 +61,11 @@ export default function BottomSheet({
       ref={sheetRef}
       index={-1}
       snapPoints={snapPoints}
-      enablePanDownToClose
+      enablePanDownToClose={enablePanDownToClose}
       onClose={onClose}
+      onChange={onChange}
       backdropComponent={renderBackdrop}
-      keyboardBehavior="interactive"
+      keyboardBehavior="extend"
       keyboardBlurBehavior="restore"
       backgroundStyle={{
         backgroundColor: colors.surface,
@@ -65,9 +79,7 @@ export default function BottomSheet({
         borderRadius: radii.pill,
       }}
     >
-      <BottomSheetView>
-        {children}
-      </BottomSheetView>
+      {raw ? children : <BottomSheetView>{children}</BottomSheetView>}
     </GorhomBottomSheet>
   );
 }

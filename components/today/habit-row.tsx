@@ -23,9 +23,11 @@ export type HabitRowProps = {
   habit: TodayHabit;
   onCheck: (habitId: string) => void;
   onUncheck: (habitId: string) => void;
+  /** Called when the user long-presses the habit name / center column to open edit sheet. */
+  onEditPress?: (habitId: string) => void;
 };
 
-export default function HabitRow({ habit, onCheck, onUncheck }: HabitRowProps) {
+export default function HabitRow({ habit, onCheck, onUncheck, onEditPress }: HabitRowProps) {
   const { colors } = useTheme();
   const isReducedMotion = useReducedMotion();
 
@@ -112,8 +114,17 @@ export default function HabitRow({ habit, onCheck, onUncheck }: HabitRowProps) {
           accessibilityLabel={habit.name}
         />
 
-        {/* center: name + meta */}
-        <View style={styles.center}>
+        {/* center: name + meta — long-press opens edit sheet
+              NOTE: right-side check button handles short-press (check) + long-press (undo).
+              This center column handles long-press → edit only, keeping gestures distinct. */}
+        <Pressable
+          style={styles.center}
+          onLongPress={() => onEditPress?.(habit.id)}
+          delayLongPress={400}
+          accessibilityLabel={`Edit ${habit.name}`}
+          accessibilityHint="Long press to edit this habit"
+          accessibilityRole="button"
+        >
           <View>
             <Body
               color={habit.isComplete ? 'ink-mute' : 'ink'}
@@ -134,7 +145,7 @@ export default function HabitRow({ habit, onCheck, onUncheck }: HabitRowProps) {
           ) : habit.target > 1 ? (
             <Caption color="ink-mute">{habit.completedCount} / {habit.target} today</Caption>
           ) : null}
-        </View>
+        </Pressable>
 
         {/* right: check control */}
         {habit.target === 1 ? (

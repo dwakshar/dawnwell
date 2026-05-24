@@ -1,19 +1,20 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { format } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
-import { type Href } from 'expo-router';
+import { Plus } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Body, Caption, Display, Heading } from '@/components/ui/typography';
 import Button from '@/components/ui/button';
+import IconButton from '@/components/ui/icon-button';
 import Pill from '@/components/ui/pill';
 import Skeleton from '@/components/ui/skeleton';
 import Reveal from '@/components/ui/reveal';
 import StreakFlame from '@/components/ui/streak-flame';
 import HabitRow from '@/components/today/habit-row';
+import HabitSheet, { type HabitSheetHandle } from '@/components/habits/habit-sheet';
 import { queryKeys } from '@/lib/query-keys';
 import { getTodayView, type TodayRitual, type TodayView } from '@/lib/queries/today';
 import { addCheckIn, removeLastCheckIn } from '@/lib/mutations/check-in';
@@ -22,8 +23,8 @@ import { getGreeting } from '@/lib/greeting';
 
 export default function TodayScreen() {
   const { colors, spacing } = useTheme();
-  const router = useRouter();
   const queryClientInstance = useQueryClient();
+  const sheetRef = useRef<HabitSheetHandle>(null);
 
   const now = new Date();
   const todayISO = getTodayISO(now);
@@ -105,6 +106,10 @@ export default function TodayScreen() {
     [uncheckMutation],
   );
 
+  const handleEdit = useCallback((habitId: string) => {
+    sheetRef.current?.openEdit(habitId);
+  }, []);
+
   const onRefresh = useCallback(() => {
     queryClientInstance.invalidateQueries({ queryKey });
   }, [queryClientInstance, queryKey]);
@@ -132,8 +137,19 @@ export default function TodayScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Display style={styles.greeting}>{greeting}</Display>
-          <Body color="ink-mute">{dateFormatted}</Body>
+          <View style={styles.headerRow}>
+            <View style={styles.headerText}>
+              <Display style={styles.greeting}>{greeting}</Display>
+              <Body color="ink-mute">{dateFormatted}</Body>
+            </View>
+            <IconButton
+              icon={Plus}
+              variant="filled"
+              size="md"
+              onPress={() => sheetRef.current?.openCreate()}
+              accessibilityLabel="Create a new habit"
+            />
+          </View>
         </View>
 
         {/* Summary pills */}
@@ -165,7 +181,7 @@ export default function TodayScreen() {
                 variant="primary"
                 size="md"
                 accessibilityLabel="Create your first habit"
-                onPress={() => router.push('/modal' as Href)}
+                onPress={() => sheetRef.current?.openCreate()}
               >
                 Create a habit
               </Button>
@@ -181,12 +197,17 @@ export default function TodayScreen() {
               ritual={ritual}
               onCheck={handleCheck}
               onUncheck={handleUncheck}
+              onEdit={handleEdit}
+              onAddHabit={() => sheetRef.current?.openCreate(ritual.id)}
             />
           ) : null,
         )}
 
         <View style={styles.bottomPad} />
       </ScrollView>
+
+      {/* Habit sheet — single instance, opened imperatively */}
+      <HabitSheet ref={sheetRef} />
     </SafeAreaView>
   );
 }
@@ -197,9 +218,11 @@ type RitualSectionProps = {
   ritual: TodayRitual;
   onCheck: (habitId: string) => void;
   onUncheck: (habitId: string) => void;
+  onEdit: (habitId: string) => void;
+  onAddHabit: () => void;
 };
 
-function RitualSection({ ritual, onCheck, onUncheck }: RitualSectionProps) {
+function RitualSection({ ritual, onCheck, onUncheck, onEdit, onAddHabit }: RitualSectionProps) {
   const { colors, radii } = useTheme();
   const completed = ritual.habits.filter((h) => h.isComplete).length;
   const total = ritual.habits.length;
@@ -208,7 +231,16 @@ function RitualSection({ ritual, onCheck, onUncheck }: RitualSectionProps) {
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Heading color="ink-soft">{ritual.name}</Heading>
-        <Caption color="ink-mute">{`${completed} / ${total}`}</Caption>
+        <View style={styles.sectionHeaderRight}>
+          <Caption color="ink-mute">{`${completed} / ${total}`}</Caption>
+          <IconButton
+            icon={Plus}
+            variant="ghost"
+            size="sm"
+            onPress={onAddHabit}
+            accessibilityLabel={`Add habit to ${ritual.name}`}
+          />
+        </View>
       </View>
 
       <View
@@ -222,7 +254,12 @@ function RitualSection({ ritual, onCheck, onUncheck }: RitualSectionProps) {
             {index > 0 && (
               <View style={[styles.hairline, { backgroundColor: colors.hairline }]} />
             )}
-            <HabitRow habit={habit} onCheck={onCheck} onUncheck={onUncheck} />
+            <HabitRow
+              habit={habit}
+              onCheck={onCheck}
+              onUncheck={onUncheck}
+              onEditPress={onEdit}
+            />
           </React.Fragment>
         ))}
       </View>
@@ -272,7 +309,14 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { paddingTop: 8, paddingBottom: 32 },
 
-  header: { marginBottom: 16, gap: 4 },
+  header: { marginBottom: 16 },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  headerText: { flex: 1, gap: 4 },
   greeting: { fontSize: 32, lineHeight: 40 },
 
   pillRow: {
@@ -296,6 +340,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 8,
+  },
+  sectionHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   card: { overflow: 'hidden' },
   hairline: { height: StyleSheet.hairlineWidth, marginHorizontal: 16 },
