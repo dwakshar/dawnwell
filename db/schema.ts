@@ -41,6 +41,12 @@ export const habits = sqliteTable(
     reminderDays: text('reminder_days').notNull().default('1111111'),
     graceDaysPerWeek: integer('grace_days_per_week').notNull().default(1),
     archivedAt: integer('archived_at'),
+    /**
+     * Local notification identifier for the scheduled habit reminder.
+     * Local to this device. Not synced. Will differ per install.
+     * SYNC-EXCLUDE
+     */
+    reminderNotificationId: text('reminder_notification_id'),
     orderIndex: integer('order_index').notNull(),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),

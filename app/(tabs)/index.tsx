@@ -18,6 +18,7 @@ import HabitSheet, { type HabitSheetHandle } from '@/components/habits/habit-she
 import { queryKeys } from '@/lib/query-keys';
 import { getTodayView, type TodayRitual, type TodayView } from '@/lib/queries/today';
 import { addCheckIn, removeLastCheckIn } from '@/lib/mutations/check-in';
+import { dismissDeliveredHabitReminder } from '@/lib/notifications';
 import { getTodayISO } from '@/lib/today';
 import { getGreeting } from '@/lib/greeting';
 
@@ -67,9 +68,11 @@ export default function TodayScreen() {
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) queryClientInstance.setQueryData(queryKey, ctx.prev);
     },
-    onSettled: () => {
+    onSettled: (_data, _error, variables) => {
       queryClientInstance.invalidateQueries({ queryKey });
       invalidateHistory();
+      // Dismiss any delivered banner for this habit — best-effort, fire-and-forget
+      void dismissDeliveredHabitReminder(variables.habitId);
     },
   });
 

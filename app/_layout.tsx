@@ -21,7 +21,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { nanoid } from 'nanoid/non-secure';
 import { useEffect, useState } from 'react';
-import { Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { AppState, type AppStateStatus, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 
@@ -36,6 +36,12 @@ import { storage, StorageKey } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { useAuthStore } from '@/stores/auth-store';
+import {
+  configureNotificationHandler,
+  ensureAndroidChannel,
+  rescheduleAll,
+  setupTapHandler,
+} from '@/lib/notifications';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -141,6 +147,36 @@ function RootLayoutNav() {
   useEffect(() => {
     useAuthStore.getState().hydrate();
   }, []);
+
+  // Configure expo-notifications handler and ensure Android channel exist
+  useEffect(() => {
+    configureNotificationHandler();
+    void ensureAndroidChannel();
+  }, []);
+
+  // Detect timezone changes on app foreground and reschedule all reminders
+  useEffect(() => {
+    const checkTZ = () => {
+      const currentTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const storedTZ = storage.getString(StorageKey.NOTIF_TZ);
+      if (storedTZ !== currentTZ) {
+        storage.setString(StorageKey.NOTIF_TZ, currentTZ);
+        void rescheduleAll();
+      }
+    };
+
+    checkTZ(); // also run on cold start / first mount
+
+    const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
+      if (next === 'active') checkTZ();
+    });
+    return () => sub.remove();
+  }, []);
+
+  // Route to Today when user taps a habit-reminder notification (live + cold-start)
+  useEffect(() => {
+    return setupTapHandler(() => router.replace('/(tabs)/' as Href));
+  }, [router]);
 
   // Handle magic-link deep links. Supabase v2 uses PKCE by default on native:
   // the email link redirects to dawnwell://auth/callback?code=xxx, and

@@ -111,16 +111,17 @@ export default function StatsScreen() {
             <Body color="ink-mute">{headerSub}</Body>
           </View>
 
-          {/* index 1 — range tabs (sticky) */}
+          {/* index 1 — range selector (sticky) */}
           <View style={[styles.rangeTabs, { paddingHorizontal: H_PAD, backgroundColor: colors.bg }]}>
-            {(['week', 'month', 'alltime'] as StatRange[]).map((r) => (
-              <RangeTab
-                key={r}
-                label={r === 'week' ? 'Week' : r === 'month' ? 'Month' : 'All time'}
-                selected={range === r}
-                onPress={() => setRange(r)}
-              />
-            ))}
+            <SegmentedControl
+              options={[
+                { value: 'week', label: 'Week' },
+                { value: 'month', label: 'Month' },
+                { value: 'alltime', label: 'All time' },
+              ]}
+              selected={range}
+              onSelect={(v) => setRange(v as StatRange)}
+            />
           </View>
 
           {/* index 2 — summary */}
@@ -174,28 +175,52 @@ export default function StatsScreen() {
   );
 }
 
-// ── Range tab ──────────────────────────────────────────────────────────────────
+// ── Segmented control ──────────────────────────────────────────────────────────
 
-type RangeTabProps = { label: string; selected: boolean; onPress: () => void };
+type SegmentOption = { value: string; label: string };
+type SegmentedControlProps = {
+  options: SegmentOption[];
+  selected: string;
+  onSelect: (value: string) => void;
+};
 
-function RangeTab({ label, selected, onPress }: RangeTabProps) {
+function SegmentedControl({ options, selected, onSelect }: SegmentedControlProps) {
   const { colors, radii } = useTheme();
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
+    <View
       style={[
-        styles.rangeTab,
-        {
-          backgroundColor: selected ? colors['surface-2'] : 'transparent',
-          borderColor: colors.hairline,
-          borderRadius: radii.pill,
-        },
+        styles.segmentedTrack,
+        { backgroundColor: colors['surface-2'], borderRadius: radii.pill },
       ]}
     >
-      <Label style={{ color: selected ? colors.ink : colors['ink-soft'] }}>{label}</Label>
-    </Pressable>
+      {options.map((opt) => {
+        const isSelected = opt.value === selected;
+        return (
+          <Pressable
+            key={opt.value}
+            onPress={() => onSelect(opt.value)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isSelected }}
+            style={[
+              styles.segmentItem,
+              isSelected && {
+                backgroundColor: colors.bg,
+                borderRadius: radii.pill,
+                shadowColor: '#000',
+                shadowOpacity: 0.08,
+                shadowRadius: 4,
+                shadowOffset: { width: 0, height: 1 },
+                elevation: 2,
+              },
+            ]}
+          >
+            <Label style={{ color: isSelected ? colors.ink : colors['ink-soft'] }}>
+              {opt.label}
+            </Label>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 
@@ -565,17 +590,17 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 32, lineHeight: 40, fontFamily: 'Fraunces_400Regular' },
 
   rangeTabs: {
-    flexDirection: 'row',
-    gap: 8,
     paddingVertical: 10,
   },
-  rangeTab: {
+  segmentedTrack: {
+    flexDirection: 'row',
+    padding: 3,
+    height: 36,
+  },
+  segmentItem: {
     flex: 1,
-    height: 32,
-    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
   },
 
   section: { marginBottom: 12 },

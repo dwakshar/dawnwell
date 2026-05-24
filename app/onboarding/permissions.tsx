@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import * as Notifications from 'expo-notifications';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Title, Body } from '@/components/ui/typography';
@@ -11,6 +10,7 @@ import PaginationDots from '@/components/ui/pagination-dots';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { storage, StorageKey } from '@/lib/storage';
 import * as haptics from '@/lib/haptics';
+import { requestPermission } from '@/lib/notifications';
 
 export default function PermissionsScreen() {
   const { colors, spacing } = useTheme();
@@ -21,11 +21,8 @@ export default function PermissionsScreen() {
   async function handleAllow() {
     setRequesting(true);
     try {
-      const { status } = await Notifications.requestPermissionsAsync();
-      storage.setString(
-        StorageKey.NOTIFICATIONS_PERMISSION,
-        status === 'granted' ? 'granted' : 'denied',
-      );
+      const result = await requestPermission();
+      storage.setString(StorageKey.NOTIFICATIONS_PERMISSION, result);
       await haptics.success();
     } catch {
       storage.setString(StorageKey.NOTIFICATIONS_PERMISSION, 'undetermined');

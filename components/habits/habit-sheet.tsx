@@ -28,6 +28,7 @@ import {
   Switch,
   View,
 } from 'react-native';
+import * as Linking from 'expo-linking';
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,
@@ -71,7 +72,16 @@ import {
   HABIT_ICONS,
   ICON_MAP,
 } from '@/lib/presets/habit-presets';
-import type { Ritual } from '@/db/schema';
+import type { Habit, Ritual } from '@/db/schema';
+import { storage, StorageKey } from '@/lib/storage';
+import {
+  getPermissionStatus,
+  scheduleHabitReminder,
+  cancelHabitReminder,
+} from '@/lib/notifications';
+import PrePromptSheet, {
+  type PrePromptSheetHandle,
+} from '@/components/notifications/pre-prompt-sheet';
 
 // ─── Public handle ─────────────────────────────────────────────────────────
 
@@ -531,6 +541,11 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(
     const [submitFailed, setSubmitFailed] = useState(false);
     const [mutationError, setMutationError] = useState<string | null>(null);
     const [showDiscardStrip, setShowDiscardStrip] = useState(false);
+    const [showDeniedNotice, setShowDeniedNotice] = useState(false);
+
+    // — Notification refs
+    const pendingHabitRef = useRef<Habit | null>(null);
+    const prePromptRef = useRef<PrePromptSheetHandle>(null);
     const discardStripTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [archiveLabel, setArchiveLabel] = useState('Archive habit');
     const archiveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -566,10 +581,10 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(
 
     const createMutation = useMutation({
       mutationFn: createHabit,
-      onSuccess: () => {
+      onSuccess: (habit) => {
         queryClient.invalidateQueries({ queryKey: queryKeys.habits() });
         queryClient.invalidateQueries({ queryKey: todayQueryKey });
-        closeSheet();
+        void handlePostSave(habit);
       },
       onError: (err) => {
         logger.error('createHabit failed', err);
@@ -580,10 +595,10 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(
     const updateMutation = useMutation({
       mutationFn: ({ id, values }: { id: string; values: HabitFormValues }) =>
         updateHabit(id, values),
-      onSuccess: () => {
+      onSuccess: (habit) => {
         queryClient.invalidateQueries({ queryKey: queryKeys.habits() });
         queryClient.invalidateQueries({ queryKey: todayQueryKey });
-        closeSheet();
+        void handlePostSave(habit);
       },
       onError: (err) => {
         logger.error('updateHabit failed', err);
@@ -631,6 +646,7 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(
       setMutationError(null);
       setShowDiscardStrip(false);
       setShowDeleteConfirm(false);
+      setShowDeniedNotice(false);
       setArchiveLabel('Archive habit');
       archivePending.current = false;
       clearTimers();
@@ -638,8 +654,43 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(
 
     const closeSheet = () => {
       resetSheetState();
+      pendingHabitRef.current = null;
       setIsOpen(false);
       onClose?.();
+    };
+
+    // ─── Notification helpers ────────────────────────────────────────────────
+
+    const FOURTEEN_DAYS = 14 * 24 * 60 * 60 * 1000;
+
+    const shouldShowPrePrompt = () => {
+      const dismissedAt = storage.getNumber(StorageKey.NOTIF_PREPROMPT_DISMISSED);
+      if (dismissedAt == null) return true;
+      return Date.now() - dismissedAt > FOURTEEN_DAYS;
+    };
+
+    const handlePostSave = async (habit: Habit) => {
+      if (habit.reminderTime == null) {
+        void cancelHabitReminder(habit.id);
+        closeSheet();
+        return;
+      }
+      const status = await getPermissionStatus();
+      if (status === 'granted') {
+        void scheduleHabitReminder(habit);
+        closeSheet();
+      } else if (status === 'denied') {
+        // Habit saved, schedule blocked. Show inline notice — user closes sheet manually.
+        setShowDeniedNotice(true);
+      } else {
+        // 'undetermined' — show pre-prompt at most once per 14 days
+        if (shouldShowPrePrompt()) {
+          pendingHabitRef.current = habit;
+          prePromptRef.current?.open();
+        } else {
+          closeSheet();
+        }
+      }
     };
 
     // — Imperative handle
@@ -723,14 +774,20 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(
         if (archiveTimer.current) clearTimeout(archiveTimer.current);
         archivePending.current = false;
         setArchiveLabel('Archive habit');
-        archiveMutation.mutate(currentHabitId);
+        // Cancel notification before archive — archived habits must not fire reminders
+        void cancelHabitReminder(currentHabitId).then(() => {
+          archiveMutation.mutate(currentHabitId);
+        });
       }
     }, [currentHabitId, archiveMutation]);
 
     // — Delete
     const handleDeleteConfirm = useCallback(() => {
       if (!currentHabitId) return;
-      deleteMutation.mutate(currentHabitId);
+      // Cancel notification BEFORE deleting — the row must still exist to read reminderNotificationId
+      void cancelHabitReminder(currentHabitId).then(() => {
+        deleteMutation.mutate(currentHabitId);
+      });
     }, [currentHabitId, deleteMutation]);
 
     const isSaving = isSubmitting || createMutation.isPending || updateMutation.isPending;
@@ -750,6 +807,7 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(
     const nameLength = nameField.value.length;
 
     return (
+      <>
       <BottomSheet
         open={isOpen}
         onClose={handleSheetClose}
@@ -782,6 +840,23 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(
           {mutationError && (
             <View style={[styles.errorStrip, { backgroundColor: colors['surface-2'] }]}>
               <Caption style={{ color: colors.accent }}>{mutationError}</Caption>
+            </View>
+          )}
+
+          {/* Notification denied notice */}
+          {showDeniedNotice && (
+            <View style={[styles.deniedNotice, { backgroundColor: colors['surface-2'] }]}>
+              <Caption color="ink-soft" style={styles.deniedNoticeText}>
+                Notifications are off in Settings. Open Settings to turn them on.
+              </Caption>
+              <Button
+                variant="ghost"
+                size="sm"
+                onPress={() => void Linking.openSettings()}
+                accessibilityLabel="Open notification settings"
+              >
+                Open Settings
+              </Button>
             </View>
           )}
 
@@ -902,6 +977,23 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(
           )}
         </BottomSheetScrollView>
       </BottomSheet>
+
+      {/* Pre-prompt sheet — shown when permission is undetermined and the user sets a reminder */}
+      <PrePromptSheet
+        ref={prePromptRef}
+        onGrant={async () => {
+          if (pendingHabitRef.current) {
+            await scheduleHabitReminder(pendingHabitRef.current);
+            pendingHabitRef.current = null;
+          }
+          closeSheet();
+        }}
+        onDismiss={() => {
+          pendingHabitRef.current = null;
+          closeSheet();
+        }}
+      />
+      </>
     );
   },
 );
@@ -980,6 +1072,19 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 4,
     marginTop: 8,
+  },
+
+  deniedNotice: {
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 4,
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  deniedNoticeText: {
+    flex: 1,
   },
 
   skeletonRow: {

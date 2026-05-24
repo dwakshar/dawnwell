@@ -12,7 +12,8 @@
       "bundleIdentifier": "app.dwakshar.dawnwell",
       "supportsTablet": true,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSUserNotificationsUsageDescription": "Dawnwell uses notifications to quietly remind you of your habits."
       }
     },
     "android": {
@@ -42,6 +43,10 @@
       ],
       "@react-native-community/datetimepicker"
     ],
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#c2410c"
+    },
     "experiments": {
       "typedRoutes": true
     }

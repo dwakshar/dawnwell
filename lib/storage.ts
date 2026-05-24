@@ -11,6 +11,8 @@ export const StorageKey = {
   APP_ONBOARDED: 'app.onboarded',
   APP_INSTALL_ID: 'app.installId',
   NOTIFICATIONS_PERMISSION: 'app.notificationsPermission',
+  NOTIF_PREPROMPT_DISMISSED: 'notif.preprompt.dismissed',
+  NOTIF_TZ: 'notif.tz',
 } as const;
 
 export type StorageKeyType = (typeof StorageKey)[keyof typeof StorageKey];
