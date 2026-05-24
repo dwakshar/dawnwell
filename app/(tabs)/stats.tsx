@@ -12,7 +12,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useReducedMotion } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { format } from 'date-fns';
-import { BarChart, LineChart } from 'react-native-gifted-charts';
+import { BarChart } from 'react-native-gifted-charts/dist/BarChart';
+import { LineChart } from 'react-native-gifted-charts/dist/LineChart';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Body, Caption, Display, Label, Mono, Title } from '@/components/ui/typography';
