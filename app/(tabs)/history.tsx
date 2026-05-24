@@ -21,7 +21,9 @@ import {
   subMonths,
 } from 'date-fns';
 import { Check, ChevronLeft, ChevronRight } from 'lucide-react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+
+import { useNavigationStore } from '@/stores/navigation-store';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Body, Caption, Heading, Label, Mono, Title } from '@/components/ui/typography';
@@ -62,6 +64,18 @@ export default function HistoryScreen() {
   const [selectedHabitId, setSelectedHabitId] = useState<string>(SELECTED_HABIT_ID_ALL);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  const preselectId = useNavigationStore((s) => s.historyPreselectHabitId);
+  const clearPreselect = useNavigationStore((s) => s.setHistoryPreselectHabitId);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (preselectId) {
+        setSelectedHabitId(preselectId);
+        clearPreselect(null);
+      }
+    }, [preselectId, clearPreselect]),
+  );
 
   const monthKey = format(currentMonth, 'yyyy-MM');
   const isCurrentMonth = isSameMonth(currentMonth, today);

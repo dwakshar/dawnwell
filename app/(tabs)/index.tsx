@@ -38,8 +38,10 @@ export default function TodayScreen() {
     queryFn: () => getTodayView(now),
   });
 
-  const invalidateHistory = () =>
+  const invalidateHistory = () => {
     queryClientInstance.invalidateQueries({ queryKey: ['history'] });
+    queryClientInstance.invalidateQueries({ queryKey: ['stats'] });
+  };
 
   const checkMutation = useMutation({
     mutationFn: ({ habitId }: { habitId: string }) => addCheckIn(habitId, todayISO),

@@ -7,4 +7,8 @@ export const queryKeys = {
     ['history', 'month', habitId, monthKey] as const,
   historyEarliest: () => ['history', 'earliest'] as const,
   historyDay: (dateKey: string) => ['history', 'day', dateKey] as const,
+  stats: () => ['stats'] as const,
+  statsAggregate: (range: string) => ['stats', 'aggregate', range] as const,
+  statsSeries: (range: string) => ['stats', 'series', range] as const,
+  statsScorecards: (range: string) => ['stats', 'scorecards', range] as const,
 };
