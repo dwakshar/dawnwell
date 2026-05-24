@@ -1,6 +1,13 @@
 import * as Haptics from 'expo-haptics';
 
+import { storage, StorageKey } from '@/lib/storage';
+
+function hapticsEnabled(): boolean {
+  return storage.getBoolean(StorageKey.SETTINGS_HAPTICS) ?? true;
+}
+
 async function fire(fn: () => Promise<void>): Promise<void> {
+  if (!hapticsEnabled()) return;
   try {
     await fn();
   } catch {

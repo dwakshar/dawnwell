@@ -1,0 +1,81 @@
+import { index, integer, sqliteTable, text, unique } from 'drizzle-orm/sqlite-core';
+import { InferInsertModel, InferSelectModel } from 'drizzle-orm';
+
+export const RITUAL_SLOTS = ['morning', 'focus', 'evening', 'custom'] as const;
+export type RitualSlot = (typeof RITUAL_SLOTS)[number];
+
+export const HABIT_COLORS = [
+  '#c2410c',
+  '#9a3412',
+  '#d97706',
+  '#f59e0b',
+  '#65735a',
+  '#84a07a',
+  '#78716c',
+  '#44403c',
+] as const;
+
+// ─── Tables ────────────────────────────────────────────────────────────────
+
+export const rituals = sqliteTable('rituals', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  slot: text('slot', { enum: RITUAL_SLOTS }).notNull(),
+  orderIndex: integer('order_index').notNull(),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+export const habits = sqliteTable(
+  'habits',
+  {
+    id: text('id').primaryKey(),
+    ritualId: text('ritual_id')
+      .notNull()
+      .references(() => rituals.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    icon: text('icon').notNull(),
+    color: text('color').notNull(),
+    targetPerDay: integer('target_per_day').notNull().default(1),
+    reminderTime: text('reminder_time'),
+    reminderDays: text('reminder_days').notNull().default('1111111'),
+    graceDaysPerWeek: integer('grace_days_per_week').notNull().default(1),
+    archivedAt: integer('archived_at'),
+    orderIndex: integer('order_index').notNull(),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (t) => [
+    index('idx_habits_ritual_id').on(t.ritualId),
+    index('idx_habits_archived').on(t.archivedAt),
+  ],
+);
+
+export const checkIns = sqliteTable(
+  'check_ins',
+  {
+    id: text('id').primaryKey(),
+    habitId: text('habit_id')
+      .notNull()
+      .references(() => habits.id, { onDelete: 'cascade' }),
+    date: text('date').notNull(),
+    count: integer('count').notNull().default(1),
+    completedAt: integer('completed_at').notNull(),
+  },
+  (t) => [
+    unique('uq_checkin_habit_date').on(t.habitId, t.date),
+    index('idx_checkins_habit_id').on(t.habitId),
+    index('idx_checkins_date').on(t.date),
+  ],
+);
+
+// ─── Inferred types ────────────────────────────────────────────────────────
+
+export type Ritual = InferSelectModel<typeof rituals>;
+export type NewRitual = InferInsertModel<typeof rituals>;
+
+export type Habit = InferSelectModel<typeof habits>;
+export type NewHabit = InferInsertModel<typeof habits>;
+
+export type CheckIn = InferSelectModel<typeof checkIns>;
+export type NewCheckIn = InferInsertModel<typeof checkIns>;
