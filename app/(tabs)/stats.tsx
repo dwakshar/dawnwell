@@ -1,40 +1,21 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
 import { useTheme } from '@/theme/ThemeProvider';
+import { Title, Body } from '@/components/ui/typography';
 
 export default function StatsScreen() {
-  const { colors, fontSize, fontFamily } = useTheme();
-
+  const { colors, spacing } = useTheme();
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.bg }]} edges={['top']}>
-      <View style={[styles.container, { backgroundColor: colors.bg }]}>
-        <Text
-          style={[
-            styles.title,
-            {
-              color: colors.ink,
-              fontFamily: fontFamily.display,
-              fontSize: fontSize['3xl'],
-            },
-          ]}>
-          Stats
-        </Text>
+      <View style={[styles.container, { paddingHorizontal: spacing[6] }]}>
+        <Title>Stats</Title>
+        <Body color="ink-soft">Coming soon.</Body>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    lineHeight: 40,
-  },
+  root: { flex: 1 },
+  container: { flex: 1, justifyContent: 'center', gap: 12 },
 });

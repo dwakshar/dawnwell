@@ -1,13 +1,13 @@
-const isDev = process.env.NODE_ENV !== 'production';
+const PREFIX = '[dawnwell]';
 
 export const logger = {
-  log: (...args: unknown[]): void => {
-    if (isDev) console.log(...args);
+  info: (...args: unknown[]): void => {
+    if (__DEV__) console.info(PREFIX, ...args);
   },
   warn: (...args: unknown[]): void => {
-    if (isDev) console.warn(...args);
+    if (__DEV__) console.warn(PREFIX, ...args);
   },
   error: (...args: unknown[]): void => {
-    if (isDev) console.error(...args);
+    if (__DEV__) console.error(PREFIX, ...args);
   },
 };

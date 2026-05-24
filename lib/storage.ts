@@ -10,6 +10,7 @@ export const StorageKey = {
   SYNC_LAST_PUSH_AT: 'sync.lastPushAt',
   APP_ONBOARDED: 'app.onboarded',
   APP_INSTALL_ID: 'app.installId',
+  NOTIFICATIONS_PERMISSION: 'app.notificationsPermission',
 } as const;
 
 export type StorageKeyType = (typeof StorageKey)[keyof typeof StorageKey];

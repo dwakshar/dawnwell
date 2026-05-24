@@ -14,7 +14,8 @@ import {
   JetBrainsMono_500Medium,
 } from '@expo-google-fonts/jetbrains-mono';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import * as Linking from 'expo-linking';
+import { type Href, Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
@@ -29,6 +30,9 @@ import { db } from '@/db/client';
 import migrations from '@/db/migrations/migrations';
 import { seedIfEmpty } from '@/db/seed';
 import { storage, StorageKey } from '@/lib/storage';
+import { supabase } from '@/lib/supabase';
+import { useOnboardingStore } from '@/stores/onboarding-store';
+import { useAuthStore } from '@/stores/auth-store';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -114,14 +118,47 @@ function DbBootstrap() {
 function RootLayoutNav() {
   const { colors, mode } = useTheme();
   const scheme = useColorScheme();
+  const router = useRouter();
+  const completed = useOnboardingStore((s) => s.completed);
 
+  // Hide splash only when going to tabs (returning user). New users: onboarding/index hides it.
   useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
+    if (completed) SplashScreen.hideAsync();
+  }, [completed]);
 
   useEffect(() => {
     SystemUI.setBackgroundColorAsync(tokens.colors[mode].bg);
   }, [mode]);
+
+  // Restore auth session from MMKV and subscribe to future changes
+  useEffect(() => {
+    useAuthStore.getState().hydrate();
+  }, []);
+
+  // Handle magic-link deep links. Supabase v2 uses PKCE by default on native:
+  // the email link redirects to dawnwell://auth/callback?code=xxx, and
+  // exchangeCodeForSession trades the code for a session, firing onAuthStateChange
+  // which the auth store picks up and navigates to tabs automatically.
+  useEffect(() => {
+    const handleUrl = ({ url }: { url: string }) => {
+      if (supabase && url.includes('auth/callback')) {
+        supabase.auth.exchangeCodeForSession(url).catch(() => {});
+      }
+    };
+    const sub = Linking.addEventListener('url', handleUrl);
+    // Handle cold-start deep link (app opened directly from magic link email)
+    Linking.getInitialURL().then((url) => {
+      if (url) handleUrl({ url });
+    });
+    return () => sub.remove();
+  }, []);
+
+  // Gate: redirect to onboarding if not completed yet
+  useEffect(() => {
+    if (!completed) {
+      router.replace('/onboarding' as Href);
+    }
+  }, [completed, router]);
 
   return (
     <>
@@ -132,6 +169,8 @@ function RootLayoutNav() {
           contentStyle: { backgroundColor: colors.bg },
         }}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="auth" />
       </Stack>
     </>
   );
