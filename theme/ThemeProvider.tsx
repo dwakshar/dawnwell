@@ -1,6 +1,7 @@
 import React, { createContext, useContext, type ReactNode } from 'react';
 import { useColorScheme } from 'react-native';
 
+import { useThemeStore } from '@/lib/stores/theme-store';
 import { tokens, type ThemeColors } from '@/theme/tokens';
 
 type ColorMode = 'light' | 'dark';
@@ -26,7 +27,11 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const systemScheme = useColorScheme();
-  const mode: ColorMode = systemScheme === 'dark' ? 'dark' : 'light';
+  const preference = useThemeStore((s) => s.preference);
+  const mode: ColorMode =
+    preference === 'system'
+      ? systemScheme === 'dark' ? 'dark' : 'light'
+      : preference;
 
   const value: ThemeContextValue = {
     mode,

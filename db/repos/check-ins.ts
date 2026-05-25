@@ -1,4 +1,4 @@
-import { and, eq, gte, isNull, lte } from 'drizzle-orm';
+import { and, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import { format, getISOWeek, getISOWeekYear, parseISO, subDays } from 'date-fns';
 import { nanoid } from 'nanoid/non-secure';
 
@@ -97,7 +97,7 @@ export async function toggleCheckIn(habitId: string, date: string): Promise<Chec
 
   // count == targetPerDay → cycle back to 0 (soft-delete)
   db.update(checkIns)
-    .set({ deletedAt: now, updatedAt: now, pendingSync: 1 })
+    .set({ deletedAt: now, updatedAt: now, pendingSync: 1, version: sql`${checkIns.version} + 1` })
     .where(eq(checkIns.id, existing.id))
     .run();
   return null;

@@ -47,10 +47,10 @@ function makeTypography(
   };
 }
 
-export const Display = makeTypography('Archivo_500Medium', 40, 48, '500');
-export const Title = makeTypography('Archivo_500Medium', 28, 34, '500');
-export const Heading = makeTypography('Archivo_500Medium', 20, 26, '500');
-export const Body = makeTypography('Inter_400Regular', 16, 24, '400');
-export const Label = makeTypography('Inter_400Regular', 14, 20, '400');
-export const Caption = makeTypography('Inter_400Regular', 12, 16, '400');
+export const Display = makeTypography('Archivo_500Medium', 40, 48, '400');
+export const Title = makeTypography('Archivo_500Medium', 28, 34, '400');
+export const Heading = makeTypography('Archivo_500Medium', 20, 26, '400');
+export const Body = makeTypography('Archivo_400Regularr', 16, 24, '400');
+export const Label = makeTypography('Archivo_400Regular', 14, 20, '400');
+export const Caption = makeTypography('Archivo_400Regular', 12, 16, '400');
 export const Mono = makeTypography('JetBrainsMono_400Regular', 13, 18, '400');

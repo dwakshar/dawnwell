@@ -36,11 +36,10 @@ export default function SyncScreen() {
     status === 'idle' ? 'sage'
     : status === 'syncing' ? 'amber'
     : status === 'offline' ? 'outlined'
-    : 'default'; // error
+    : 'default';
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.bg }]} edges={['top']}>
-      {/* Header */}
       <View style={[styles.header, { paddingHorizontal: spacing[4] }]}>
         <IconButton
           icon={ArrowLeft}
@@ -57,7 +56,6 @@ export default function SyncScreen() {
         contentContainerStyle={[styles.content, { paddingHorizontal: spacing[4] }]}
         showsVerticalScrollIndicator={false}>
 
-        {/* Status row */}
         <View style={styles.statusRow}>
           <Pill variant={pillVariant}>
             {status === 'syncing' ? 'Syncing…' : status}
@@ -65,7 +63,6 @@ export default function SyncScreen() {
           {isBusy && <ActivityIndicator size="small" color={colors.accent} />}
         </View>
 
-        {/* Last synced */}
         {lastSyncedAt ? (
           <Caption color="ink-mute" style={styles.lastSynced}>
             Last synced {formatDistanceToNow(lastSyncedAt, { addSuffix: true })}
@@ -74,14 +71,12 @@ export default function SyncScreen() {
           <Caption color="ink-mute" style={styles.lastSynced}>Never synced</Caption>
         )}
 
-        {/* Pending writes */}
         {pendingCount > 0 && (
           <Caption color="ink-soft">
             {pendingCount} change{pendingCount !== 1 ? 's' : ''} waiting to sync
           </Caption>
         )}
 
-        {/* Last result stats */}
         {lastResult && (
           <Card style={styles.resultCard}>
             <View style={styles.resultRow}>
@@ -103,7 +98,6 @@ export default function SyncScreen() {
           </Card>
         )}
 
-        {/* Error card */}
         {status === 'error' && error && (
           <Card style={styles.errorCard}>
             <Body color="ink-soft">{error}</Body>
@@ -118,14 +112,12 @@ export default function SyncScreen() {
           </Card>
         )}
 
-        {/* Offline notice */}
         {isOffline && (
           <Caption color="ink-mute" style={styles.offlineNote}>
             You're offline. Sync will resume automatically when you reconnect.
           </Caption>
         )}
 
-        {/* Primary action */}
         <View style={styles.syncButton}>
           <Button
             variant="primary"

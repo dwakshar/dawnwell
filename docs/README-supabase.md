@@ -121,6 +121,62 @@ Requires the Supabase CLI to be installed (`npm install -g supabase`) and logged
 
 ---
 
+## P10 — Account deletion RPC (migration 0004)
+
+### Run in SQL editor
+
+```
+supabase/migrations/0004_delete_account_rpc.sql
+```
+
+This migration:
+1. Adds `pending_deletion_at TIMESTAMPTZ` column to `profiles`
+2. Creates `delete_user_account()` — a `SECURITY DEFINER` function that cascades
+   all app-schema data for the calling user
+
+### How the client calls it
+
+```ts
+const { error } = await (supabase as SupabaseClient).rpc('delete_user_account');
+```
+
+After the RPC succeeds, the client:
+- Signs out from Supabase auth
+- Cancels all local notifications
+- Wipes local SQLite tables
+- Clears MMKV storage
+- Navigates to auth/sign-in
+
+### V1 limitation — auth.users row
+
+The `auth.users` row is **not deleted** by the client. Supabase does not expose
+`admin.deleteUser()` to the anon key for security reasons. Instead, the profiles
+row is stamped with `pending_deletion_at` so a server-side cleanup job (Edge
+Function or pg_cron) can finish the deletion.
+
+**Effect:** after account deletion, signing in with the same email still works
+(Supabase finds the existing `auth.users` row). The app will start fresh with
+zero habits because all app-schema data was cascade-deleted by the RPC.
+
+Full auth deletion via an Edge Function is planned for v1.1.
+
+### SECURITY DEFINER verification
+
+The function uses `SECURITY DEFINER` to bypass RLS, guarded by an explicit
+`auth.uid() IS NULL → RAISE EXCEPTION` check. Verify the guard works:
+
+```sql
+-- Test in SQL editor (not as a real user)
+SET LOCAL role TO anon;
+SELECT public.delete_user_account();
+-- Expected: ERROR "Not authenticated" or permission denied (from REVOKE anon)
+```
+
+The `GRANT EXECUTE TO authenticated; REVOKE EXECUTE FROM anon;` in the migration
+provides a second layer — the anon role cannot even call the function.
+
+---
+
 ## Android — Gmail in-app browser (known flaky area)
 
 The magic-link email opened inside the Gmail app on Android uses Chrome Custom Tabs

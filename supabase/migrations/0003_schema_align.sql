@@ -6,6 +6,9 @@
 --   1. Drop updated_at auto-triggers — client controls updated_at for merge correctness
 --   2. All id columns: UUID → TEXT  (accepts nanoid(12) from local)
 --   3. All timestamps: TIMESTAMPTZ → BIGINT (unix milliseconds, matches local integers)
+--      Each timestamp column must have its DEFAULT dropped before the type change;
+--      PostgreSQL cannot auto-cast a now() default expression to BIGINT.
+--      The app writes all timestamps explicitly, so no BIGINT default is needed.
 --   4. Add missing columns: slot on rituals, reminder_days/grace_days_per_week/
 --      archived_at on habits, date on check_ins
 --   5. Add version on rituals (habits + check_ins already had it)
@@ -22,12 +25,18 @@ DROP TRIGGER IF EXISTS trg_check_ins_updated_at ON public.check_ins;
 ALTER TABLE public.habits DROP CONSTRAINT IF EXISTS habits_ritual_id_fkey;
 
 ALTER TABLE public.rituals ALTER COLUMN id TYPE TEXT USING id::TEXT;
+
+ALTER TABLE public.rituals ALTER COLUMN created_at DROP DEFAULT;
 ALTER TABLE public.rituals
   ALTER COLUMN created_at TYPE BIGINT
   USING (EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT;
+
+ALTER TABLE public.rituals ALTER COLUMN updated_at DROP DEFAULT;
 ALTER TABLE public.rituals
   ALTER COLUMN updated_at TYPE BIGINT
   USING (EXTRACT(EPOCH FROM updated_at) * 1000)::BIGINT;
+
+ALTER TABLE public.rituals ALTER COLUMN deleted_at DROP DEFAULT;
 ALTER TABLE public.rituals
   ALTER COLUMN deleted_at TYPE BIGINT
   USING (EXTRACT(EPOCH FROM deleted_at) * 1000)::BIGINT;
@@ -46,12 +55,18 @@ ALTER TABLE public.check_ins DROP CONSTRAINT IF EXISTS check_ins_habit_id_fkey;
 
 ALTER TABLE public.habits ALTER COLUMN id       TYPE TEXT USING id::TEXT;
 ALTER TABLE public.habits ALTER COLUMN ritual_id TYPE TEXT USING ritual_id::TEXT;
+
+ALTER TABLE public.habits ALTER COLUMN created_at DROP DEFAULT;
 ALTER TABLE public.habits
   ALTER COLUMN created_at TYPE BIGINT
   USING (EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT;
+
+ALTER TABLE public.habits ALTER COLUMN updated_at DROP DEFAULT;
 ALTER TABLE public.habits
   ALTER COLUMN updated_at TYPE BIGINT
   USING (EXTRACT(EPOCH FROM updated_at) * 1000)::BIGINT;
+
+ALTER TABLE public.habits ALTER COLUMN deleted_at DROP DEFAULT;
 ALTER TABLE public.habits
   ALTER COLUMN deleted_at TYPE BIGINT
   USING (EXTRACT(EPOCH FROM deleted_at) * 1000)::BIGINT;
@@ -71,17 +86,25 @@ ALTER TABLE public.habits
   FOREIGN KEY (ritual_id) REFERENCES public.rituals(id) ON DELETE CASCADE;
 
 -- ── 2 & 3. check_ins ─────────────────────────────────────────────────────────
-ALTER TABLE public.check_ins ALTER COLUMN id       TYPE TEXT USING id::TEXT;
-ALTER TABLE public.check_ins ALTER COLUMN habit_id  TYPE TEXT USING habit_id::TEXT;
+ALTER TABLE public.check_ins ALTER COLUMN id      TYPE TEXT USING id::TEXT;
+ALTER TABLE public.check_ins ALTER COLUMN habit_id TYPE TEXT USING habit_id::TEXT;
+
+ALTER TABLE public.check_ins ALTER COLUMN completed_at DROP DEFAULT;
 ALTER TABLE public.check_ins
   ALTER COLUMN completed_at TYPE BIGINT
   USING (EXTRACT(EPOCH FROM completed_at) * 1000)::BIGINT;
+
+ALTER TABLE public.check_ins ALTER COLUMN created_at DROP DEFAULT;
 ALTER TABLE public.check_ins
   ALTER COLUMN created_at TYPE BIGINT
   USING (EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT;
+
+ALTER TABLE public.check_ins ALTER COLUMN updated_at DROP DEFAULT;
 ALTER TABLE public.check_ins
   ALTER COLUMN updated_at TYPE BIGINT
   USING (EXTRACT(EPOCH FROM updated_at) * 1000)::BIGINT;
+
+ALTER TABLE public.check_ins ALTER COLUMN deleted_at DROP DEFAULT;
 ALTER TABLE public.check_ins
   ALTER COLUMN deleted_at TYPE BIGINT
   USING (EXTRACT(EPOCH FROM deleted_at) * 1000)::BIGINT;
@@ -95,9 +118,12 @@ ALTER TABLE public.check_ins
   FOREIGN KEY (habit_id) REFERENCES public.habits(id) ON DELETE CASCADE;
 
 -- ── sync_meta ─────────────────────────────────────────────────────────────────
+ALTER TABLE public.sync_meta ALTER COLUMN last_pulled_at DROP DEFAULT;
 ALTER TABLE public.sync_meta
   ALTER COLUMN last_pulled_at TYPE BIGINT
   USING (EXTRACT(EPOCH FROM last_pulled_at) * 1000)::BIGINT;
+
+ALTER TABLE public.sync_meta ALTER COLUMN last_pushed_at DROP DEFAULT;
 ALTER TABLE public.sync_meta
   ALTER COLUMN last_pushed_at TYPE BIGINT
   USING (EXTRACT(EPOCH FROM last_pushed_at) * 1000)::BIGINT;

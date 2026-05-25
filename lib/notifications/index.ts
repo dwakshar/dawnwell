@@ -187,6 +187,19 @@ export async function cancelHabitReminder(habitId: string): Promise<void> {
 }
 
 /**
+ * Cancels all scheduled notifications and clears stored identifiers.
+ * Called on sign-out and account deletion. Does NOT reschedule.
+ */
+export async function cancelAllReminders(): Promise<void> {
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    db.update(habits).set({ reminderNotificationId: null }).run();
+  } catch (e) {
+    logger.error('notif: cancelAllReminders failed', e);
+  }
+}
+
+/**
  * Cancels all scheduled notifications and re-schedules from current DB state.
  *
  * Called on TZ change. Android requires this; iOS would mostly handle it but
