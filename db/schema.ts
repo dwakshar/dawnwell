@@ -24,6 +24,12 @@ export const rituals = sqliteTable('rituals', {
   orderIndex: integer('order_index').notNull(),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
+  // ── sync columns ─────────────────────────────────────────────────────────
+  version: integer('version').notNull().default(1),
+  /** 1 = write pending network push; 0 = clean */
+  pendingSync: integer('pending_sync').notNull().default(0),
+  /** Unix ms. Non-null = soft-deleted; synced then optionally hard-deleted locally. */
+  deletedAt: integer('deleted_at'),
 });
 
 export const habits = sqliteTable(
@@ -50,6 +56,10 @@ export const habits = sqliteTable(
     orderIndex: integer('order_index').notNull(),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
+    // ── sync columns ───────────────────────────────────────────────────────
+    version: integer('version').notNull().default(1),
+    pendingSync: integer('pending_sync').notNull().default(0),
+    deletedAt: integer('deleted_at'),
   },
   (t) => [
     index('idx_habits_ritual_id').on(t.ritualId),
@@ -67,6 +77,12 @@ export const checkIns = sqliteTable(
     date: text('date').notNull(),
     count: integer('count').notNull().default(1),
     completedAt: integer('completed_at').notNull(),
+    createdAt: integer('created_at').notNull().$defaultFn(() => Date.now()),
+    updatedAt: integer('updated_at').notNull().$defaultFn(() => Date.now()),
+    // ── sync columns ───────────────────────────────────────────────────────
+    version: integer('version').notNull().default(1),
+    pendingSync: integer('pending_sync').notNull().default(0),
+    deletedAt: integer('deleted_at'),
   },
   (t) => [
     unique('uq_checkin_habit_date').on(t.habitId, t.date),

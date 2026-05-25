@@ -1,4 +1,4 @@
-import { and, eq, gte, lte } from 'drizzle-orm';
+import { and, eq, gte, isNull, lte } from 'drizzle-orm';
 import { format, getISOWeek, getISOWeekYear, parseISO, subDays } from 'date-fns';
 import { nanoid } from 'nanoid/non-secure';
 
@@ -12,7 +12,11 @@ function today(): string {
 // ─── Reads ────────────────────────────────────────────────────────────────
 
 export async function listCheckInsForDate(date: string): Promise<CheckIn[]> {
-  return db.select().from(checkIns).where(eq(checkIns.date, date)).all();
+  return db
+    .select()
+    .from(checkIns)
+    .where(and(eq(checkIns.date, date), isNull(checkIns.deletedAt)))
+    .all();
 }
 
 export async function listCheckInsForHabit(
@@ -25,6 +29,7 @@ export async function listCheckInsForHabit(
     .where(
       and(
         eq(checkIns.habitId, habitId),
+        isNull(checkIns.deletedAt),
         opts.from ? gte(checkIns.date, opts.from) : undefined,
         opts.to ? lte(checkIns.date, opts.to) : undefined,
       ),
@@ -33,7 +38,21 @@ export async function listCheckInsForHabit(
     .all();
 }
 
+/** Active check-in for the given habit+date (excludes soft-deleted). */
 export async function getCheckIn(habitId: string, date: string): Promise<CheckIn | null> {
+  const rows = db
+    .select()
+    .from(checkIns)
+    .where(
+      and(eq(checkIns.habitId, habitId), eq(checkIns.date, date), isNull(checkIns.deletedAt)),
+    )
+    .all();
+  return rows[0] ?? null;
+}
+
+/** Returns any check-in row for the given habit+date, including soft-deleted ones.
+ *  Used by addCheckIn to detect unique-constraint conflicts before inserting. */
+export async function getCheckInAny(habitId: string, date: string): Promise<CheckIn | null> {
   const rows = db
     .select()
     .from(checkIns)
@@ -50,6 +69,7 @@ export async function toggleCheckIn(habitId: string, date: string): Promise<Chec
   if (!habit) throw new Error(`Habit ${habitId} not found`);
 
   const existing = await getCheckIn(habitId, date);
+  const now = Date.now();
 
   if (!existing) {
     const row: NewCheckIn = {
@@ -57,7 +77,11 @@ export async function toggleCheckIn(habitId: string, date: string): Promise<Chec
       habitId,
       date,
       count: 1,
-      completedAt: Date.now(),
+      completedAt: now,
+      createdAt: now,
+      updatedAt: now,
+      pendingSync: 1,
+      version: 1,
     };
     db.insert(checkIns).values(row).run();
     return (await getCheckIn(habitId, date))!;
@@ -65,14 +89,17 @@ export async function toggleCheckIn(habitId: string, date: string): Promise<Chec
 
   if (existing.count < habit.targetPerDay) {
     db.update(checkIns)
-      .set({ count: existing.count + 1, completedAt: Date.now() })
+      .set({ count: existing.count + 1, completedAt: now, updatedAt: now, pendingSync: 1 })
       .where(eq(checkIns.id, existing.id))
       .run();
     return (await getCheckIn(habitId, date))!;
   }
 
-  // count == targetPerDay → cycle back to 0 (delete)
-  db.delete(checkIns).where(eq(checkIns.id, existing.id)).run();
+  // count == targetPerDay → cycle back to 0 (soft-delete)
+  db.update(checkIns)
+    .set({ deletedAt: now, updatedAt: now, pendingSync: 1 })
+    .where(eq(checkIns.id, existing.id))
+    .run();
   return null;
 }
 
@@ -94,7 +121,7 @@ export async function getStreakInfo(habitId: string): Promise<StreakInfo> {
   const allRows = db
     .select({ date: checkIns.date })
     .from(checkIns)
-    .where(eq(checkIns.habitId, habitId))
+    .where(and(eq(checkIns.habitId, habitId), isNull(checkIns.deletedAt)))
     .orderBy(checkIns.date)
     .all();
 
@@ -107,17 +134,12 @@ export async function getStreakInfo(habitId: string): Promise<StreakInfo> {
 
   const todayStr = today();
 
-  // ── current streak ────────────────────────────────────────────────────
   const current = computeStreakBackward(completedDates, todayStr, graceDays);
-
-  // ── longest streak ────────────────────────────────────────────────────
   const longest = computeLongestStreak(completedDates, lastCompletedDate ?? todayStr, graceDays);
 
   return { current, longest, lastCompletedDate };
 }
 
-// Walk backwards from `startDate`. If startDate has no check-in, start from yesterday.
-// A week's missed days are allowed up to graceDays; exceeding it ends the streak.
 function computeStreakBackward(
   completedDates: Set<string>,
   startDate: string,
@@ -128,7 +150,6 @@ function computeStreakBackward(
 
   let cursor = parseISO(startDate);
 
-  // If today isn't completed, still valid — start walking from yesterday
   if (!completedDates.has(startDate)) {
     cursor = subDays(cursor, 1);
   }
@@ -147,7 +168,6 @@ function computeStreakBackward(
 
     cursor = subDays(cursor, 1);
 
-    // Stop when we've gone past all known completed dates
     const oldestDate = [...completedDates].sort()[0];
     if (!oldestDate) break;
     if (format(cursor, 'yyyy-MM-dd') < oldestDate) break;
@@ -156,7 +176,6 @@ function computeStreakBackward(
   return streak;
 }
 
-// Walk forward through history, building up streaks with grace day support.
 function computeLongestStreak(
   completedDates: Set<string>,
   endDate: string,
@@ -166,7 +185,10 @@ function computeLongestStreak(
 
   const sortedDates = [...completedDates].sort();
   const oldest = sortedDates[0]!;
-  const newest = endDate > (sortedDates[sortedDates.length - 1] ?? '') ? sortedDates[sortedDates.length - 1]! : endDate;
+  const newest =
+    endDate > (sortedDates[sortedDates.length - 1] ?? '')
+      ? sortedDates[sortedDates.length - 1]!
+      : endDate;
 
   let longest = 0;
   let currentStreak = 0;
@@ -186,13 +208,12 @@ function computeLongestStreak(
       const misses = (weekMisses.get(weekKey) ?? 0) + 1;
       weekMisses.set(weekKey, misses);
       if (misses > graceDays) {
-        // reset
         currentStreak = 0;
         weekMisses.clear();
       }
     }
 
-    cursor = subDays(cursor, -1); // add 1 day
+    cursor = subDays(cursor, -1);
   }
 
   return longest;

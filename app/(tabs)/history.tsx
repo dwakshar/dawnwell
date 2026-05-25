@@ -40,6 +40,7 @@ import {
 } from '@/hooks/use-history';
 import { getCellInfo } from '@/lib/history';
 import type { DayCheckIn } from '@/lib/queries/history';
+import { syncNow } from '@/lib/sync/engine';
 import { getTodayISO } from '@/lib/today';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -196,14 +197,15 @@ export default function HistoryScreen() {
             ]}
             showsVerticalScrollIndicator={false}
             refreshControl={
-              checkInsError ? (
-                <RefreshControl
-                  refreshing={checkInsLoading}
-                  onRefresh={refetchCheckIns}
-                  tintColor={colors.accent}
-                  colors={[colors.accent]}
-                />
-              ) : undefined
+              <RefreshControl
+                refreshing={checkInsLoading}
+                onRefresh={() => {
+                  refetchCheckIns();
+                  void syncNow();
+                }}
+                tintColor={colors.accent}
+                colors={[colors.accent]}
+              />
             }>
             {checkInsError ? (
               <View style={styles.errorState}>

@@ -1,3 +1,5 @@
+import 'react-native-url-polyfill/auto';
+
 import {
   Archivo_400Regular,
   Archivo_500Medium,
@@ -45,6 +47,7 @@ import {
 import { queryClient } from '@/lib/query-client';
 import { storage, StorageKey } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
+import { initConnectivityWatcher, syncNow, teardownConnectivityWatcher } from '@/lib/sync/engine';
 import { useAuthStore } from '@/stores/auth-store';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
@@ -149,11 +152,15 @@ function RootLayoutNav() {
   const scheme = useColorScheme();
   const router = useRouter();
   const completed = useOnboardingStore((s) => s.completed);
+  const authStatus = useAuthStore((s) => s.status);
 
-  // Hide splash only when going to tabs (returning user). New users: onboarding/index hides it.
+  // Hide splash once both onboarding is done AND auth has resolved (idle/loading = still checking MMKV).
+  // New users: onboarding/index hides it instead.
   useEffect(() => {
-    if (completed) SplashScreen.hideAsync();
-  }, [completed]);
+    if (completed && authStatus !== 'idle' && authStatus !== 'loading') {
+      SplashScreen.hideAsync();
+    }
+  }, [completed, authStatus]);
 
   useEffect(() => {
     SystemUI.setBackgroundColorAsync(tokens.colors[mode].bg);
@@ -161,7 +168,7 @@ function RootLayoutNav() {
 
   // Restore auth session from MMKV and subscribe to future changes
   useEffect(() => {
-    useAuthStore.getState().hydrate();
+    void useAuthStore.getState().initialize();
   }, []);
 
   // Configure expo-notifications handler and ensure Android channel exist
@@ -187,6 +194,29 @@ function RootLayoutNav() {
       if (next === 'active') checkTZ();
     });
     return () => sub.remove();
+  }, []);
+
+  // Sync on app foreground (debounce 2s to let auth restore finish first)
+  useEffect(() => {
+    let foregroundTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
+      if (next === 'active' && authStatus === 'authenticated') {
+        if (foregroundTimer) clearTimeout(foregroundTimer);
+        foregroundTimer = setTimeout(() => void syncNow(), 2_000);
+      }
+    });
+
+    return () => {
+      sub.remove();
+      if (foregroundTimer) clearTimeout(foregroundTimer);
+    };
+  }, [authStatus]);
+
+  // Start connectivity watcher (offline→online auto-sync)
+  useEffect(() => {
+    initConnectivityWatcher();
+    return () => teardownConnectivityWatcher();
   }, []);
 
   // Route to Today when user taps a habit-reminder notification (live + cold-start)
@@ -228,6 +258,7 @@ function RootLayoutNav() {
           contentStyle: { backgroundColor: colors.bg },
         }}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(settings)" />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="auth/sign-in" />
         <Stack.Screen name="auth/verify" />

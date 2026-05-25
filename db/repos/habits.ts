@@ -1,23 +1,30 @@
-import { eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { nanoid } from 'nanoid/non-secure';
 
 import { db } from '../client';
 import { habits, type Habit, type NewHabit } from '../schema';
 
 export async function listHabits(opts: { includeArchived?: boolean } = {}): Promise<Habit[]> {
-  const rows = db.select().from(habits).orderBy(habits.orderIndex).all();
-  if (opts.includeArchived) return rows;
-  return rows.filter((h) => h.archivedAt == null);
+  return db
+    .select()
+    .from(habits)
+    .where(
+      and(
+        isNull(habits.deletedAt),
+        opts.includeArchived ? undefined : isNull(habits.archivedAt),
+      ),
+    )
+    .orderBy(habits.orderIndex)
+    .all();
 }
 
 export async function listHabitsByRitual(ritualId: string): Promise<Habit[]> {
   return db
     .select()
     .from(habits)
-    .where(eq(habits.ritualId, ritualId))
+    .where(and(eq(habits.ritualId, ritualId), isNull(habits.deletedAt), isNull(habits.archivedAt)))
     .orderBy(habits.orderIndex)
-    .all()
-    .filter((h) => h.archivedAt == null);
+    .all();
 }
 
 export async function getHabit(id: string): Promise<Habit | null> {
@@ -34,6 +41,8 @@ export async function createHabit(
     id: nanoid(12),
     createdAt: now,
     updatedAt: now,
+    pendingSync: 1,
+    version: 1,
   };
   db.insert(habits).values(row).run();
   return (await getHabit(row.id))!;

@@ -17,6 +17,7 @@ import { Body, Caption, Display, Heading } from '@/components/ui/typography';
 import { getGreeting } from '@/lib/greeting';
 import { addCheckIn, removeLastCheckIn } from '@/lib/mutations/check-in';
 import { dismissDeliveredHabitReminder } from '@/lib/notifications';
+import { syncNow } from '@/lib/sync/engine';
 import { getTodayView, type TodayRitual, type TodayView } from '@/lib/queries/today';
 import { queryKeys } from '@/lib/query-keys';
 import { getTodayISO } from '@/lib/today';
@@ -123,6 +124,7 @@ export default function TodayScreen() {
 
   const onRefresh = useCallback(() => {
     queryClientInstance.invalidateQueries({ queryKey });
+    void syncNow();
   }, [queryClientInstance, queryKey]);
 
   const allHabits = data?.rituals.flatMap((r) => r.habits) ?? [];

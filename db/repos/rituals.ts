@@ -1,11 +1,16 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { nanoid } from 'nanoid/non-secure';
 
 import { db } from '../client';
 import { rituals, type NewRitual, type Ritual, type RitualSlot } from '../schema';
 
 export async function listRituals(): Promise<Ritual[]> {
-  return db.select().from(rituals).orderBy(rituals.orderIndex).all();
+  return db
+    .select()
+    .from(rituals)
+    .where(isNull(rituals.deletedAt))
+    .orderBy(rituals.orderIndex)
+    .all();
 }
 
 export async function getRitual(id: string): Promise<Ritual | null> {
@@ -29,6 +34,8 @@ export async function createRitual(input: {
     orderIndex: input.orderIndex ?? maxOrder + 1,
     createdAt: now,
     updatedAt: now,
+    pendingSync: 1,
+    version: 1,
   };
 
   db.insert(rituals).values(row).run();

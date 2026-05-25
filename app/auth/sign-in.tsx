@@ -14,15 +14,15 @@ import * as haptics from '@/lib/haptics';
 export default function SignInScreen() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
-  const { status, errorMessage, sendMagicLink } = useAuthStore();
+  const { sendStatus, sendError, signInWithMagicLink } = useAuthStore();
   const [email, setEmail] = useState('');
 
-  const canSubmit = isValidEmail(email) && status !== 'sending';
+  const canSubmit = isValidEmail(email) && sendStatus !== 'sending';
 
   async function handleSend() {
     if (!canSubmit) return;
-    await sendMagicLink(email.trim().toLowerCase());
-    if (useAuthStore.getState().status === 'sent') {
+    await signInWithMagicLink(email.trim().toLowerCase());
+    if (useAuthStore.getState().sendStatus === 'sent') {
       await haptics.success();
       router.push({ pathname: '/auth/verify', params: { email: email.trim().toLowerCase() } });
     } else {
@@ -58,15 +58,13 @@ export default function SignInScreen() {
                 autoCapitalize="none"
                 returnKeyType="send"
                 onSubmitEditing={handleSend}
-                error={
-                  errorMessage && status === 'error' ? errorMessage : undefined
-                }
+                error={sendError && sendStatus === 'error' ? sendError : undefined}
               />
               <Button
                 variant="primary"
                 size="lg"
                 fullWidth
-                loading={status === 'sending'}
+                loading={sendStatus === 'sending'}
                 disabled={!canSubmit}
                 accessibilityLabel="Send magic link to email address"
                 onPress={handleSend}

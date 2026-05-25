@@ -1,61 +1,82 @@
-import { create } from 'zustand';
 import type { Session, User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import { create } from 'zustand';
 import { logger } from '@/lib/logger';
+import { bootstrapProfile } from '@/lib/profile';
+import { supabase } from '@/lib/supabase/client';
 
-type AuthStatus = 'idle' | 'sending' | 'sent' | 'error';
+export type AuthStatus = 'idle' | 'loading' | 'authenticated' | 'unauthenticated';
+export type SendStatus = 'idle' | 'sending' | 'sent' | 'error';
 
 type AuthState = {
   session: Session | null;
   user: User | null;
+  /** Lifecycle status of the session (used for layout gating and splash). */
   status: AuthStatus;
-  errorMessage: string | null;
-  sendMagicLink: (email: string) => Promise<void>;
+  /** Status of an in-flight magic-link send (used by sign-in screen). */
+  sendStatus: SendStatus;
+  sendError: string | null;
+  signInWithMagicLink: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
-  hydrate: () => void;
+  /** Restore session from MMKV and subscribe to future auth changes. Call once on mount. */
+  initialize: () => Promise<void>;
 };
 
 export const useAuthStore = create<AuthState>((set) => ({
   session: null,
   user: null,
   status: 'idle',
-  errorMessage: null,
+  sendStatus: 'idle',
+  sendError: null,
 
-  sendMagicLink: async (email) => {
-    if (!supabase) {
-      set({ status: 'error', errorMessage: 'Auth not configured — add Supabase env vars.' });
-      return;
-    }
-    set({ status: 'sending', errorMessage: null });
+  signInWithMagicLink: async (email) => {
+    set({ sendStatus: 'sending', sendError: null });
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: { emailRedirectTo: 'dawnwell://auth/callback' },
       });
       if (error) throw error;
-      set({ status: 'sent' });
+      set({ sendStatus: 'sent' });
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Something went wrong.';
-      logger.error('sendMagicLink failed', msg);
-      set({ status: 'error', errorMessage: msg });
+      const raw = e instanceof Error ? e.message : 'Something went wrong.';
+      logger.error('signInWithMagicLink failed', raw);
+      const msg = raw.toLowerCase().includes('rate limit')
+        ? 'Too many emails sent. Wait a few minutes before trying again.'
+        : raw;
+      set({ sendStatus: 'error', sendError: msg });
     }
   },
 
   signOut: async () => {
-    if (!supabase) return;
     await supabase.auth.signOut();
-    set({ session: null, user: null, status: 'idle', errorMessage: null });
+    set({ session: null, user: null, status: 'unauthenticated', sendStatus: 'idle', sendError: null });
   },
 
-  hydrate: () => {
-    if (!supabase) return;
-    // Restore existing session from MMKV-backed storage
-    supabase.auth.getSession().then(({ data }) => {
-      set({ session: data.session, user: data.session?.user ?? null });
+  initialize: async () => {
+    set({ status: 'loading' });
+
+    const { data } = await supabase.auth.getSession();
+    const session = data.session;
+    set({
+      session,
+      user: session?.user ?? null,
+      status: session ? 'authenticated' : 'unauthenticated',
     });
-    // Keep store in sync with all future auth state changes
-    supabase.auth.onAuthStateChange((_event, session) => {
-      set({ session, user: session?.user ?? null });
+
+    if (session?.user) {
+      void bootstrapProfile(session.user.id);
+    }
+
+    supabase.auth.onAuthStateChange((_event, nextSession) => {
+      const wasAuthenticated = nextSession !== null;
+      set({
+        session: nextSession,
+        user: nextSession?.user ?? null,
+        status: wasAuthenticated ? 'authenticated' : 'unauthenticated',
+      });
+      if (nextSession?.user) {
+        void bootstrapProfile(nextSession.user.id);
+      }
     });
   },
 }));
