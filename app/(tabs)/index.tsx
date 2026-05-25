@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Plus } from 'lucide-react-native';
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import HabitSheet, { type HabitSheetHandle } from '@/components/habits/habit-sheet';
@@ -13,8 +14,10 @@ import Pill from '@/components/ui/pill';
 import Reveal from '@/components/ui/reveal';
 import Skeleton from '@/components/ui/skeleton';
 import StreakFlame from '@/components/ui/streak-flame';
+import SyncStatusLine from '@/components/ui/SyncStatusLine';
 import { Body, Caption, Display, Heading } from '@/components/ui/typography';
 import { getGreeting } from '@/lib/greeting';
+import { useMotion } from '@/lib/hooks/use-motion';
 import { addCheckIn, removeLastCheckIn } from '@/lib/mutations/check-in';
 import { dismissDeliveredHabitReminder } from '@/lib/notifications';
 import { syncNow } from '@/lib/sync/engine';
@@ -25,8 +28,15 @@ import { useTheme } from '@/theme/ThemeProvider';
 
 export default function TodayScreen() {
   const { colors, spacing } = useTheme();
+  const { stagger, reduced } = useMotion();
   const queryClientInstance = useQueryClient();
   const sheetRef = useRef<HabitSheetHandle>(null);
+
+  // Mount flag: stagger only fires on first mount, not subsequent re-renders
+  const didMount = useRef(false);
+  useEffect(() => {
+    didMount.current = true;
+  }, []);
 
   const now = new Date();
   const todayISO = getTodayISO(now);
@@ -72,7 +82,6 @@ export default function TodayScreen() {
     onSettled: (_data, _error, variables) => {
       queryClientInstance.invalidateQueries({ queryKey });
       invalidateHistory();
-      // Dismiss any delivered banner for this habit — best-effort, fire-and-forget
       void dismissDeliveredHabitReminder(variables.habitId);
     },
   });
@@ -133,6 +142,9 @@ export default function TodayScreen() {
   const maxStreak = allHabits.reduce((max, h) => Math.max(max, h.currentStreak), 0);
   const hasNoHabits = !isLoading && totalCount === 0;
 
+  // Rituals that have habits — used to compute stagger index
+  const visibleRituals = data?.rituals.filter((r) => r.habits.length > 0) ?? [];
+
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.bg }]} edges={['top']}>
       <ScrollView
@@ -163,6 +175,9 @@ export default function TodayScreen() {
             />
           </View>
         </View>
+
+        {/* Sync status line — fades in if sync takes >500ms */}
+        <SyncStatusLine />
 
         {/* Summary pills */}
         {!isLoading && totalCount > 0 && (
@@ -203,19 +218,25 @@ export default function TodayScreen() {
           </Reveal>
         )}
 
-        {/* Ritual sections */}
-        {data?.rituals.map((ritual) =>
-          ritual.habits.length > 0 ? (
-            <RitualSection
+        {/* Ritual sections — staggered entrance on first mount only */}
+        {visibleRituals.map((ritual, index) => {
+          // Stagger delay: 0 on subsequent renders (entering only fires on mount)
+          const delay = stagger(index, 80);
+          return (
+            <Animated.View
               key={ritual.id}
-              ritual={ritual}
-              onCheck={handleCheck}
-              onUncheck={handleUncheck}
-              onEdit={handleEdit}
-              onAddHabit={() => sheetRef.current?.openCreate(ritual.id)}
-            />
-          ) : null,
-        )}
+              entering={reduced ? undefined : FadeInUp.duration(300).delay(delay)}
+            >
+              <RitualSection
+                ritual={ritual}
+                onCheck={handleCheck}
+                onUncheck={handleUncheck}
+                onEdit={handleEdit}
+                onAddHabit={() => sheetRef.current?.openCreate(ritual.id)}
+              />
+            </Animated.View>
+          );
+        })}
 
         <View style={styles.bottomPad} />
       </ScrollView>
@@ -332,7 +353,7 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { paddingTop: 8, paddingBottom: 32 },
 
-  header: { marginBottom: 16 },
+  header: { marginBottom: 8 },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',

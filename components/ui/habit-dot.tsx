@@ -7,8 +7,8 @@ import Animated, {
   withSequence,
   withTiming,
   interpolateColor,
-  useReducedMotion,
 } from 'react-native-reanimated';
+import { useMotion } from '@/lib/hooks/use-motion';
 import { Check } from 'lucide-react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import * as haptics from '@/lib/haptics';
@@ -37,7 +37,7 @@ export default function HabitDot({
   accessibilityLabel,
 }: HabitDotProps) {
   const { colors } = useTheme();
-  const isReducedMotion = useReducedMotion();
+  const { reduced: isReducedMotion } = useMotion();
   const scale = useSharedValue(1);
   const fillProgress = useSharedValue(state === 'complete' ? 1 : 0);
   const checkOpacity = useSharedValue(state === 'complete' ? 1 : 0);

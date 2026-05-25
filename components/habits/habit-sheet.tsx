@@ -31,10 +31,10 @@ import {
 import * as Linking from 'expo-linking';
 import Animated, {
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { useMotion } from '@/lib/hooks/use-motion';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { DateTimePickerChangeEvent } from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
@@ -376,7 +376,7 @@ function ReminderSection({
   onTimeChange,
 }: ReminderSectionProps) {
   const { colors } = useTheme();
-  const isReducedMotion = useReducedMotion();
+  const { reduced: isReducedMotion } = useMotion();
   const [showPicker, setShowPicker] = useState(false);
 
   const heightAnim = useSharedValue(0);

@@ -6,9 +6,9 @@ import Animated, {
   withRepeat,
   withTiming,
   interpolateColor,
-  useReducedMotion,
   Easing,
 } from 'react-native-reanimated';
+import { useMotion } from '@/lib/hooks/use-motion';
 import { useTheme } from '@/theme/ThemeProvider';
 
 export type SkeletonProps = {
@@ -20,7 +20,7 @@ export type SkeletonProps = {
 
 export default function Skeleton({ width, height, radius, style }: SkeletonProps) {
   const { colors, radii } = useTheme();
-  const isReducedMotion = useReducedMotion();
+  const { reduced: isReducedMotion } = useMotion();
   const shimmer = useSharedValue(0);
 
   const surface2 = colors['surface-2'];

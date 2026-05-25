@@ -40,3 +40,7 @@ export async function error(): Promise<void> {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
   );
 }
+
+export async function selection(): Promise<void> {
+  await fire(() => Haptics.selectionAsync());
+}

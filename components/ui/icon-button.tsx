@@ -4,9 +4,10 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  useReducedMotion,
+  withTiming,
 } from 'react-native-reanimated';
 import { useTheme } from '@/theme/ThemeProvider';
+import { useMotion } from '@/lib/hooks/use-motion';
 import * as haptics from '@/lib/haptics';
 import type { LucideIcon } from 'lucide-react-native';
 
@@ -38,11 +39,13 @@ export default function IconButton({
   color,
 }: IconButtonProps) {
   const { colors, radii } = useTheme();
-  const isReducedMotion = useReducedMotion();
+  const { reduced } = useMotion();
   const scale = useSharedValue(1);
+  const opacity = useSharedValue(1);
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
+    opacity: opacity.value,
   }));
 
   const dim = SIZE[size];
@@ -78,11 +81,14 @@ export default function IconButton({
       onPress={disabled ? undefined : onPress}
       onPressIn={() => {
         if (disabled) return;
-        haptics.light();
-        if (!isReducedMotion) scale.value = withSpring(0.97, { damping: 15, stiffness: 300 });
+        void haptics.selection();
+        opacity.value = withTiming(0.85, { duration: 80 });
+        // Slightly more aggressive scale for smaller targets
+        if (!reduced) scale.value = withSpring(0.92, { damping: 15, stiffness: 300 });
       }}
       onPressOut={() => {
-        if (!isReducedMotion) scale.value = withSpring(1, { damping: 15, stiffness: 300 });
+        opacity.value = withTiming(1, { duration: 150 });
+        if (!reduced) scale.value = withSpring(1, { damping: 15, stiffness: 300 });
       }}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"

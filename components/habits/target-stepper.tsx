@@ -4,8 +4,8 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  useReducedMotion,
 } from 'react-native-reanimated';
+import { useMotion } from '@/lib/hooks/use-motion';
 import { Minus, Plus } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -34,7 +34,7 @@ function StepButton({
 }) {
   const { colors, radii } = useTheme();
   const scale = useSharedValue(1);
-  const isReducedMotion = useReducedMotion();
+  const { reduced: isReducedMotion } = useMotion();
 
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 

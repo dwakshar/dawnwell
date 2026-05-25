@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
+  Easing,
   interpolate,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withSequence,
   withSpring,
@@ -13,6 +13,7 @@ import { Check } from 'lucide-react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { useMotion } from '@/lib/hooks/use-motion';
 import { Body, Caption, Mono } from '@/components/ui/typography';
 import HabitDot from '@/components/ui/habit-dot';
 import StreakFlame from '@/components/ui/streak-flame';
@@ -27,13 +28,16 @@ export type HabitRowProps = {
   onEditPress?: (habitId: string) => void;
 };
 
+// Spring config for check-in scale punch — tuned for responsive but grounded feel
+const CHECK_SPRING = { damping: 18, stiffness: 220, mass: 0.8 };
+
 export default function HabitRow({ habit, onCheck, onUncheck, onEditPress }: HabitRowProps) {
   const { colors } = useTheme();
-  const isReducedMotion = useReducedMotion();
+  const { reduced } = useMotion();
 
   const rowScale = useSharedValue(1);
   const tintOpacity = useSharedValue(0);
-  // checkVisible drives the fill + icon scale animation when a habit completes
+  const glowOpacity = useSharedValue(0);
   const checkVisible = useSharedValue(habit.isComplete ? 1 : 0);
 
   useEffect(() => {
@@ -46,15 +50,25 @@ export default function HabitRow({ habit, onCheck, onUncheck, onEditPress }: Hab
 
   const handlePress = () => {
     if (habit.isComplete) return;
-    haptics.light();
-    if (!isReducedMotion) {
+    // Haptic fires on tap, not after animation
+    void haptics.medium();
+
+    if (!reduced) {
+      // Scale: 1 → 0.94 → 1.04 → 1 over ~350ms
       rowScale.value = withSequence(
-        withSpring(1.04, { damping: 12, stiffness: 180 }),
-        withSpring(1, { damping: 12, stiffness: 180 }),
+        withSpring(0.94, CHECK_SPRING),
+        withSpring(1.04, CHECK_SPRING),
+        withSpring(1, CHECK_SPRING),
       );
+      // Habit color tint flash
       tintOpacity.value = withSequence(
-        withTiming(0.1, { duration: 150 }),
-        withTiming(0, { duration: 600 }),
+        withTiming(0.1, { duration: 120 }),
+        withTiming(0, { duration: 500, easing: Easing.out(Easing.cubic) }),
+      );
+      // Subtle row glow: surface-2 peek behind the card, ease-out
+      glowOpacity.value = withSequence(
+        withTiming(1, { duration: 60 }),
+        withTiming(0, { duration: 400, easing: Easing.out(Easing.cubic) }),
       );
     }
     onCheck(habit.id);
@@ -62,7 +76,8 @@ export default function HabitRow({ habit, onCheck, onUncheck, onEditPress }: Hab
 
   const handleLongPress = () => {
     if (!habit.isComplete) return;
-    haptics.warning();
+    // Lighter haptic for undo — acknowledge without drama
+    void haptics.selection();
     onUncheck(habit.id);
   };
 
@@ -72,6 +87,10 @@ export default function HabitRow({ habit, onCheck, onUncheck, onEditPress }: Hab
 
   const tintStyle = useAnimatedStyle(() => ({
     opacity: tintOpacity.value,
+  }));
+
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: glowOpacity.value,
   }));
 
   const checkFillStyle = useAnimatedStyle(() => ({
@@ -91,6 +110,12 @@ export default function HabitRow({ habit, onCheck, onUncheck, onEditPress }: Hab
 
   return (
     <Animated.View style={rowStyle}>
+      {/* Glow layer — sits behind row, surface-2 tint that peeks through on check */}
+      <Animated.View
+        style={[StyleSheet.absoluteFill, { backgroundColor: colors['surface-2'] }, glowStyle]}
+        pointerEvents="none"
+      />
+
       <Pressable
         onPress={handlePress}
         onLongPress={handleLongPress}
@@ -100,7 +125,7 @@ export default function HabitRow({ habit, onCheck, onUncheck, onEditPress }: Hab
         accessibilityHint={habit.isComplete ? 'Long press to undo last check-in' : undefined}
         style={styles.row}
       >
-        {/* tint flash overlay */}
+        {/* Habit-color tint flash overlay */}
         <Animated.View
           style={[StyleSheet.absoluteFill, { backgroundColor: habit.color }, tintStyle]}
           pointerEvents="none"
@@ -114,9 +139,7 @@ export default function HabitRow({ habit, onCheck, onUncheck, onEditPress }: Hab
           accessibilityLabel={habit.name}
         />
 
-        {/* center: name + meta — long-press opens edit sheet
-              NOTE: right-side check button handles short-press (check) + long-press (undo).
-              This center column handles long-press → edit only, keeping gestures distinct. */}
+        {/* center: name + meta */}
         <Pressable
           style={styles.center}
           onLongPress={() => onEditPress?.(habit.id)}

@@ -5,12 +5,12 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withSpring,
-  useReducedMotion,
   runOnJS,
   Easing,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useTheme } from '@/theme/ThemeProvider';
+import { useMotion } from '@/lib/hooks/use-motion';
 
 export type DrawerSide = 'right' | 'left';
 
@@ -30,7 +30,7 @@ export default function Drawer({
   children,
 }: DrawerProps) {
   const { colors, radii } = useTheme();
-  const isReducedMotion = useReducedMotion();
+  const { reduced: isReducedMotion } = useMotion();
   const [visible, setVisible] = useState(open);
 
   const offscreen = side === 'right' ? drawerWidth : -drawerWidth;

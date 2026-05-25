@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import { BarChart } from 'react-native-gifted-charts/dist/BarChart';
 import { LineChart } from 'react-native-gifted-charts/dist/LineChart';
-import { useReducedMotion } from 'react-native-reanimated';
+import * as haptics from '@/lib/haptics';
+import { useMotion } from '@/lib/hooks/use-motion';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import EmptyNoHabits from '@/components/empty-states/no-habits';
@@ -214,7 +215,10 @@ function SegmentedControl({ options, selected, onSelect }: SegmentedControlProps
         return (
           <Pressable
             key={opt.value}
-            onPress={() => onSelect(opt.value)}
+            onPress={() => {
+              void haptics.selection();
+              onSelect(opt.value);
+            }}
             accessibilityRole="button"
             accessibilityState={{ selected: isSelected }}
             style={[
@@ -309,7 +313,7 @@ type ChartCardProps = { series: SeriesPoint[]; range: StatRange; screenWidth: nu
 
 function ChartCard({ series, range, screenWidth }: ChartCardProps) {
   const { colors } = useTheme();
-  const isReducedMotion = useReducedMotion();
+  const { reduced: isReducedMotion } = useMotion();
   const chartWidth = screenWidth - H_PAD * 2 - CARD_PAD * 2;
   const allZero = series.every((s) => s.pct === 0);
 
@@ -462,7 +466,7 @@ function CompletionBarChart({
         }}
         topLabelContainerStyle={{ height: 22 }}
         isAnimated={!isReducedMotion}
-        animationDuration={300}
+        animationDuration={600}
         barBorderRadius={3}
       />
     </ScrollView>
@@ -522,7 +526,7 @@ function AllTimeLineChart({
       dataPointsRadius={0}
       dataPointsColor="transparent"
       isAnimated={!isReducedMotion}
-      animationDuration={400}
+      animationDuration={isReducedMotion ? 0 : 600}
     />
   );
 }

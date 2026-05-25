@@ -10,9 +10,9 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  useReducedMotion,
 } from 'react-native-reanimated';
 import { useTheme } from '@/theme/ThemeProvider';
+import { useMotion } from '@/lib/hooks/use-motion';
 import * as haptics from '@/lib/haptics';
 
 export type CardVariant = 'default' | 'raised' | 'flat';
@@ -35,7 +35,7 @@ export default function Card({
   children,
 }: CardProps) {
   const { colors, radii, spacing } = useTheme();
-  const isReducedMotion = useReducedMotion();
+  const { reduced: isReducedMotion } = useMotion();
   const scale = useSharedValue(1);
 
   const animStyle = useAnimatedStyle(() => ({

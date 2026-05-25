@@ -4,8 +4,8 @@ import Animated, {
   FadeIn,
   FadeInUp,
   FadeInDown,
-  useReducedMotion,
 } from 'react-native-reanimated';
+import { useMotion } from '@/lib/hooks/use-motion';
 
 export type RevealDirection = 'up' | 'down' | 'fade';
 
@@ -24,7 +24,7 @@ export default function Reveal({
   distance: _distance = 12,
   children,
 }: RevealProps) {
-  const isReducedMotion = useReducedMotion();
+  const { reduced: isReducedMotion } = useMotion();
 
   const entering =
     direction === 'up'

@@ -19,7 +19,8 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
+import { useMotion } from '@/lib/hooks/use-motion';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useNavigationStore } from '@/stores/navigation-store';
@@ -397,7 +398,7 @@ function HeatmapCalendar({
   onDayPress,
 }: HeatmapCalendarProps) {
   const { colors } = useTheme();
-  const isReducedMotion = useReducedMotion();
+  const { reduced } = useMotion();
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -446,8 +447,6 @@ function HeatmapCalendar({
     return r;
   }, [cells]);
 
-  let globalCellIndex = 0;
-
   return (
     <View>
       {/* Weekday header */}
@@ -461,13 +460,12 @@ function HeatmapCalendar({
         ))}
       </View>
 
-      {/* Day rows */}
+      {/* Day rows — stagger by column (day-of-week), not by cell index */}
       {rows.map((row, rowIdx) => (
         <View
           key={rowIdx}
           style={[styles.calRow, { gap: CELL_GAP, marginBottom: CELL_GAP }]}>
-          {row.map((cell) => {
-            const idx = globalCellIndex++;
+          {row.map((cell, colIdx) => {
             if (cell.type === 'empty') {
               return (
                 <View key={cell.key} style={{ width: cellSize, height: cellSize }} />
@@ -553,14 +551,17 @@ function HeatmapCalendar({
               </Pressable>
             );
 
-            if (isReducedMotion) {
+            if (reduced) {
               return <View key={cell.key}>{cellContent}</View>;
             }
+
+            // Stagger by column index (0-6), capped at 6 columns = 180ms max
+            const colDelay = Math.min(colIdx, 6) * 30;
 
             return (
               <Animated.View
                 key={cell.key}
-                entering={FadeIn.duration(180).delay(idx * 8)}>
+                entering={FadeIn.duration(180).delay(colDelay)}>
                 {cellContent}
               </Animated.View>
             );
