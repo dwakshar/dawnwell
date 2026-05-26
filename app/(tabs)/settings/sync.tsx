@@ -1,8 +1,16 @@
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, RefreshCw } from 'lucide-react-native';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Button from '@/components/ui/button';
@@ -12,12 +20,14 @@ import Pill from '@/components/ui/pill';
 import { Body, Caption, Title } from '@/components/ui/typography';
 import { syncNow } from '@/lib/sync/engine';
 import { useSyncStore } from '@/lib/stores/sync-store';
+import { useMotion } from '@/lib/hooks/use-motion';
 import { useTheme } from '@/theme/ThemeProvider';
 
 export default function SyncScreen() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
   const { status, lastSyncedAt, lastResult, error, pendingCount } = useSyncStore();
+  const { reduced } = useMotion();
   const [triggering, setTriggering] = useState(false);
 
   const handleSyncNow = useCallback(async () => {
@@ -37,6 +47,27 @@ export default function SyncScreen() {
     : status === 'syncing' ? 'amber'
     : status === 'offline' ? 'outlined'
     : 'default';
+
+  // Breathing animation for pending count (3.1) — worklet-only, no JS involvement
+  const breatheOpacity = useSharedValue(1);
+
+  useEffect(() => {
+    if (pendingCount === 0 || reduced) {
+      cancelAnimation(breatheOpacity);
+      breatheOpacity.value = withTiming(1, { duration: 200 });
+      return;
+    }
+    breatheOpacity.value = withRepeat(
+      withSequence(
+        withTiming(0.5, { duration: 1000 }),
+        withTiming(1.0, { duration: 1000 }),
+      ),
+      -1,
+      false,
+    );
+  }, [pendingCount, reduced, breatheOpacity]);
+
+  const breatheStyle = useAnimatedStyle(() => ({ opacity: breatheOpacity.value }));
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.bg }]} edges={['top']}>
@@ -71,10 +102,13 @@ export default function SyncScreen() {
           <Caption color="ink-mute" style={styles.lastSynced}>Never synced</Caption>
         )}
 
+        {/* Breathing pending count (3.1) */}
         {pendingCount > 0 && (
-          <Caption color="ink-soft">
-            {pendingCount} change{pendingCount !== 1 ? 's' : ''} waiting to sync
-          </Caption>
+          <Animated.View style={breatheStyle}>
+            <Caption color="ink-soft">
+              {pendingCount} change{pendingCount !== 1 ? 's' : ''} waiting to sync
+            </Caption>
+          </Animated.View>
         )}
 
         {lastResult && (

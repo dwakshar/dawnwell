@@ -8,6 +8,7 @@ import Animated, {
   withSequence,
   withSpring,
   withTiming,
+  withDelay,
 } from 'react-native-reanimated';
 import { Check } from 'lucide-react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -24,14 +25,27 @@ export type HabitRowProps = {
   habit: TodayHabit;
   onCheck: (habitId: string) => void;
   onUncheck: (habitId: string) => void;
-  /** Called when the user long-presses the habit name / center column to open edit sheet. */
   onEditPress?: (habitId: string) => void;
+  /**
+   * Increment to trigger a foreground re-flash (3.5 ambient motion).
+   * HabitRow watches this value and re-plays the completion glow when it changes.
+   */
+  flashKey?: number;
+  /** Delay in ms before re-flash plays — used for staggering multiple rows. */
+  flashDelay?: number;
 };
 
 // Spring config for check-in scale punch — tuned for responsive but grounded feel
 const CHECK_SPRING = { damping: 18, stiffness: 220, mass: 0.8 };
 
-export default function HabitRow({ habit, onCheck, onUncheck, onEditPress }: HabitRowProps) {
+export default function HabitRow({
+  habit,
+  onCheck,
+  onUncheck,
+  onEditPress,
+  flashKey = 0,
+  flashDelay = 0,
+}: HabitRowProps) {
   const { colors } = useTheme();
   const { reduced } = useMotion();
 
@@ -48,24 +62,33 @@ export default function HabitRow({ habit, onCheck, onUncheck, onEditPress }: Hab
     }
   }, [habit.isComplete, checkVisible]);
 
+  // Foreground re-flash: when flashKey increments (app returns to foreground),
+  // briefly replay the glow for habits completed in the last 60 minutes.
+  useEffect(() => {
+    if (flashKey === 0 || reduced) return;
+    glowOpacity.value = withDelay(
+      flashDelay,
+      withSequence(
+        withTiming(1, { duration: 60 }),
+        withTiming(0, { duration: 500, easing: Easing.out(Easing.cubic) }),
+      ),
+    );
+  }, [flashKey, flashDelay, reduced, glowOpacity]);
+
   const handlePress = () => {
     if (habit.isComplete) return;
-    // Haptic fires on tap, not after animation
     void haptics.medium();
 
     if (!reduced) {
-      // Scale: 1 → 0.94 → 1.04 → 1 over ~350ms
       rowScale.value = withSequence(
         withSpring(0.94, CHECK_SPRING),
         withSpring(1.04, CHECK_SPRING),
         withSpring(1, CHECK_SPRING),
       );
-      // Habit color tint flash
       tintOpacity.value = withSequence(
         withTiming(0.1, { duration: 120 }),
         withTiming(0, { duration: 500, easing: Easing.out(Easing.cubic) }),
       );
-      // Subtle row glow: surface-2 peek behind the card, ease-out
       glowOpacity.value = withSequence(
         withTiming(1, { duration: 60 }),
         withTiming(0, { duration: 400, easing: Easing.out(Easing.cubic) }),
@@ -76,7 +99,6 @@ export default function HabitRow({ habit, onCheck, onUncheck, onEditPress }: Hab
 
   const handleLongPress = () => {
     if (!habit.isComplete) return;
-    // Lighter haptic for undo — acknowledge without drama
     void haptics.selection();
     onUncheck(habit.id);
   };
@@ -110,7 +132,7 @@ export default function HabitRow({ habit, onCheck, onUncheck, onEditPress }: Hab
 
   return (
     <Animated.View style={rowStyle}>
-      {/* Glow layer — sits behind row, surface-2 tint that peeks through on check */}
+      {/* Glow layer */}
       <Animated.View
         style={[StyleSheet.absoluteFill, { backgroundColor: colors['surface-2'] }, glowStyle]}
         pointerEvents="none"
@@ -173,14 +195,13 @@ export default function HabitRow({ habit, onCheck, onUncheck, onEditPress }: Hab
         {/* right: check control */}
         {habit.target === 1 ? (
           <View style={styles.checkSquareContainer}>
-            <View
-              style={[
-                styles.checkSquare,
-                { borderColor: colors.hairline },
-              ]}
-            >
+            <View style={[styles.checkSquare, { borderColor: colors.hairline }]}>
               <Animated.View
-                style={[StyleSheet.absoluteFill, { backgroundColor: habit.color, borderRadius: 8 }, checkFillStyle]}
+                style={[
+                  StyleSheet.absoluteFill,
+                  { backgroundColor: habit.color, borderRadius: 8 },
+                  checkFillStyle,
+                ]}
               />
               <Animated.View style={[styles.checkIconInner, checkIconStyle]}>
                 <Check size={15} color="#ffffff" strokeWidth={2.5} />

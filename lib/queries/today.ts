@@ -15,6 +15,8 @@ export type TodayHabit = {
   isComplete: boolean;
   currentStreak: number;
   reminderTime: string | null;
+  /** Unix ms of today's check-in, null if not checked in yet. Used for foreground re-flash. */
+  completedAtToday: number | null;
 };
 
 export type TodayRitual = {
@@ -22,6 +24,8 @@ export type TodayRitual = {
   name: string;
   kind: string;
   habits: TodayHabit[];
+  /** Unix ms of the most recent check-in across all habits in this ritual today. */
+  lastCheckedAtToday: number | null;
 };
 
 export type TodayView = {
@@ -55,13 +59,17 @@ export async function getTodayView(date: Date): Promise<TodayView> {
     .all();
 
   const todayCheckIns = db
-    .select({ habitId: checkIns.habitId, count: checkIns.count })
+    .select({
+      habitId: checkIns.habitId,
+      count: checkIns.count,
+      completedAt: checkIns.completedAt,
+    })
     .from(checkIns)
     .where(eq(checkIns.date, dateISO))
     .all();
 
-  const checkInMap = new Map<string, number>(
-    todayCheckIns.map((ci) => [ci.habitId, ci.count]),
+  const checkInMap = new Map<string, { count: number; completedAt: number }>(
+    todayCheckIns.map((ci) => [ci.habitId, { count: ci.count, completedAt: ci.completedAt }]),
   );
 
   const streakMap = new Map<string, number>();
@@ -91,7 +99,8 @@ export async function getTodayView(date: Date): Promise<TodayView> {
         ritualHabits: [],
       });
     }
-    const completedCount = checkInMap.get(row.habitId) ?? 0;
+    const ciData = checkInMap.get(row.habitId);
+    const completedCount = ciData?.count ?? 0;
     const isComplete = completedCount >= row.targetPerDay;
     ritualMap.get(row.ritualId)!.ritualHabits.push({
       id: row.habitId,
@@ -103,6 +112,7 @@ export async function getTodayView(date: Date): Promise<TodayView> {
       isComplete,
       currentStreak: streakMap.get(row.habitId) ?? 0,
       reminderTime: row.reminderTime ?? null,
+      completedAtToday: ciData?.completedAt ?? null,
     });
   }
 
@@ -117,11 +127,20 @@ export async function getTodayView(date: Date): Promise<TodayView> {
 
   return {
     dateISO,
-    rituals: sorted.map(({ ritual, ritualHabits }) => ({
-      id: ritual.id,
-      name: ritual.name,
-      kind: ritual.slot,
-      habits: ritualHabits,
-    })),
+    rituals: sorted.map(({ ritual, ritualHabits }) => {
+      // Most recent check-in time across habits in this ritual today
+      const lastCheckedAtToday = ritualHabits.reduce<number | null>((max, h) => {
+        if (h.completedAtToday === null) return max;
+        return max === null ? h.completedAtToday : Math.max(max, h.completedAtToday);
+      }, null);
+
+      return {
+        id: ritual.id,
+        name: ritual.name,
+        kind: ritual.slot,
+        habits: ritualHabits,
+        lastCheckedAtToday,
+      };
+    }),
   };
 }

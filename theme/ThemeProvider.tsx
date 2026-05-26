@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useEffect, type ReactNode } from 'react';
-import { useColorScheme } from 'react-native';
+import { StyleSheet, useColorScheme } from 'react-native';
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import LinearGradient from 'react-native-linear-gradient';
 
 import { useThemeStore } from '@/lib/stores/theme-store';
 import { useMotion } from '@/lib/hooks/use-motion';
@@ -42,7 +43,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       ? systemScheme === 'dark' ? 'dark' : 'light'
       : preference;
 
-  // Animate between 0 (light) and 1 (dark) — interpolated to bg color
+  // Animate between 0 (light) and 1 (dark)
   const modeProgress = useSharedValue(mode === 'dark' ? 1 : 0);
 
   useEffect(() => {
@@ -74,9 +75,25 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     touchTarget: tokens.touchTarget,
   };
 
+  // Ambient gradient stops — very subtle, break up the flat fill.
+  // Light: slight darkening at corners (#eef2f9 ≈ #f5f7fa minus 6 luminance pts)
+  // Dark: slight deepening at corners (#020611 ≈ #050814 minus a few points)
+  const gradientColors: [string, string, string] =
+    mode === 'light'
+      ? ['rgba(0,12,30,0.035)', 'transparent', 'rgba(0,12,30,0.035)']
+      : ['rgba(0,0,0,0.28)', 'transparent', 'rgba(0,0,0,0.28)'];
+
   return (
     <ThemeContext.Provider value={value}>
       <Animated.View style={bgStyle}>
+        {/* Ambient depth gradient — imperceptible at a glance, removes "printer paper" flatness */}
+        <LinearGradient
+          colors={gradientColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
         {children}
       </Animated.View>
     </ThemeContext.Provider>
