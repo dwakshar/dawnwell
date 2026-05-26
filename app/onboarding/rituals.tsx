@@ -8,27 +8,27 @@ import Card from '@/components/ui/card';
 import Reveal from '@/components/ui/reveal';
 import PaginationDots from '@/components/ui/pagination-dots';
 
-const RITUAL_EXAMPLES = [
-  {
-    name: 'Morning',
-    color: '#d97706',
-    habits: ['Drink water', 'Meditate', 'Journal'],
-  },
-  {
-    name: 'Focus',
-    color: '#65735a',
-    habits: ['Deep work block', 'No phone for 1 hr'],
-  },
-  {
-    name: 'Evening',
-    color: '#c2410c',
-    habits: ['Walk outside', 'Read', 'Lights out by 11'],
-  },
-] as const;
-
 export default function RitualsScreen() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
+
+  const RITUAL_EXAMPLES = [
+    {
+      name: 'Morning',
+      color: colors.amber,
+      habits: ['Drink water', 'Meditate', 'Journal'],
+    },
+    {
+      name: 'Focus',
+      color: colors.sage,
+      habits: ['Deep work block', 'No phone for 1 hr'],
+    },
+    {
+      name: 'Evening',
+      color: colors.accent,
+      habits: ['Walk outside', 'Read', 'Lights out by 11'],
+    },
+  ];
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.bg }]} edges={['top', 'bottom']}>

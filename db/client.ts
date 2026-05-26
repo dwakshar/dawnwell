@@ -3,7 +3,7 @@ import { openDatabaseSync } from 'expo-sqlite';
 
 import * as schema from './schema';
 
-const client = openDatabaseSync('dawnwell.db');
+export const client = openDatabaseSync('dawnwell.db');
 
 client.execSync('PRAGMA journal_mode=WAL;');
 client.execSync('PRAGMA foreign_keys=ON;');

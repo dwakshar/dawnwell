@@ -16,7 +16,6 @@ import {
   JetBrainsMono_400Regular,
   JetBrainsMono_500Medium,
 } from '@expo-google-fonts/jetbrains-mono';
-import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import { useFonts } from 'expo-font';
 import * as Linking from 'expo-linking';
 import { type Href, Stack, useRouter } from 'expo-router';
@@ -35,8 +34,9 @@ import {
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { db } from '@/db/client';
+import { client, db } from '@/db/client';
 import migrations from '@/db/migrations/migrations';
+import { runMigrations } from '@/db/migrate-sync';
 import { seedIfEmpty } from '@/db/seed';
 import {
   configureNotificationHandler,
@@ -88,17 +88,16 @@ export default function RootLayout() {
 }
 
 function DbBootstrap() {
-  const { success: migrationsOk, error: migrationError } = useMigrations(db, migrations);
+  const { colors } = useTheme();
   const [dbReady, setDbReady] = useState(false);
   const [initError, setInitError] = useState<Error | null>(null);
   const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
-    if (!migrationsOk) return;
-
     let cancelled = false;
     (async () => {
       try {
+        await runMigrations(client, migrations);
         await seedIfEmpty();
 
         if (!storage.getString(StorageKey.APP_INSTALL_ID)) {
@@ -114,14 +113,14 @@ function DbBootstrap() {
     return () => {
       cancelled = true;
     };
-  }, [migrationsOk, retryKey]);
+  }, [retryKey]);
 
-  const error = migrationError ?? initError;
+  const error = initError;
   if (error) {
     return (
       <View
         style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-        <Text style={{ color: '#c2410c', marginBottom: 12, textAlign: 'center' }}>
+        <Text style={{ color: colors.accent, marginBottom: 12, textAlign: 'center' }}>
           Failed to initialize database:{'\n'}
           {error.message}
         </Text>
@@ -131,7 +130,7 @@ function DbBootstrap() {
             setRetryKey((k) => k + 1);
           }}
           style={{
-            backgroundColor: '#c2410c',
+            backgroundColor: colors.accent,
             paddingHorizontal: 24,
             paddingVertical: 12,
             borderRadius: 12,
@@ -154,13 +153,22 @@ function RootLayoutNav() {
   const completed = useOnboardingStore((s) => s.completed);
   const authStatus = useAuthStore((s) => s.status);
 
-  // Hide splash once both onboarding is done AND auth has resolved (idle/loading = still checking MMKV).
-  // New users: onboarding/index hides it instead.
+  // Hide splash and navigate once the app state resolves.
+  // New users: hide immediately and send to onboarding.
+  // Returning users: hide once auth finishes (idle/loading = still resolving).
   useEffect(() => {
-    if (completed && authStatus !== 'idle' && authStatus !== 'loading') {
-      SplashScreen.hideAsync();
+    if (!completed) {
+      void SplashScreen.hideAsync();
+    } else if (authStatus !== 'idle' && authStatus !== 'loading') {
+      void SplashScreen.hideAsync();
     }
   }, [completed, authStatus]);
+
+  // Safety net: always dismiss splash after 8 s regardless of state.
+  useEffect(() => {
+    const t = setTimeout(() => void SplashScreen.hideAsync(), 8_000);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     SystemUI.setBackgroundColorAsync(tokens.colors[mode].bg);

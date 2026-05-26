@@ -2,13 +2,16 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import GorhomBottomSheet, {
   BottomSheetView,
   BottomSheetScrollView,
+  BottomSheetFooter,
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  type BottomSheetFooterProps,
 } from '@gorhom/bottom-sheet';
 import { useTheme } from '@/theme/ThemeProvider';
 
 // Re-export sub-components so feature code never imports @gorhom/bottom-sheet directly
-export { BottomSheetScrollView, BottomSheetView };
+export { BottomSheetScrollView, BottomSheetView, BottomSheetFooter };
+export type { BottomSheetFooterProps };
 
 export type BottomSheetProps = {
   open: boolean;
@@ -21,6 +24,8 @@ export type BottomSheetProps = {
   /** Forwarded to GorhomBottomSheet — set false to block drag-to-dismiss (e.g. unsaved edits). */
   enablePanDownToClose?: boolean;
   onChange?: (index: number) => void;
+  /** Renders a sticky footer pinned above the keyboard — use BottomSheetFooter inside. */
+  footerComponent?: (props: BottomSheetFooterProps) => React.ReactElement;
 };
 
 export default function BottomSheet({
@@ -31,6 +36,7 @@ export default function BottomSheet({
   raw = false,
   enablePanDownToClose = true,
   onChange,
+  footerComponent,
 }: BottomSheetProps) {
   const { colors, radii } = useTheme();
   const sheetRef = useRef<GorhomBottomSheet>(null);
@@ -65,6 +71,7 @@ export default function BottomSheet({
       onClose={onClose}
       onChange={onChange}
       backdropComponent={renderBackdrop}
+      footerComponent={footerComponent}
       keyboardBehavior="extend"
       keyboardBlurBehavior="restore"
       backgroundStyle={{

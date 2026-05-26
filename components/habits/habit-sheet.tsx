@@ -45,7 +45,8 @@ import { Check, X } from 'lucide-react-native';
 
 import BottomSheet, {
   BottomSheetScrollView,
-  BottomSheetView,
+  BottomSheetFooter,
+  type BottomSheetFooterProps,
 } from '@/components/ui/bottom-sheet';
 import Button from '@/components/ui/button';
 import IconButton from '@/components/ui/icon-button';
@@ -151,9 +152,6 @@ function SectionLabel({ children }: { children: string }) {
 type SheetHeaderProps = {
   mode: 'create' | 'edit';
   onCancel: () => void;
-  onSave: () => void;
-  saving: boolean;
-  valid: boolean;
   showDiscardStrip: boolean;
   onKeepEditing: () => void;
   onDiscard: () => void;
@@ -162,17 +160,14 @@ type SheetHeaderProps = {
 function SheetHeader({
   mode,
   onCancel,
-  onSave,
-  saving,
-  valid,
   showDiscardStrip,
   onKeepEditing,
   onDiscard,
 }: SheetHeaderProps) {
-  const { colors, radii } = useTheme();
+  const { colors } = useTheme();
 
   return (
-    <BottomSheetView style={styles.headerContainer}>
+    <View style={styles.headerContainer}>
       <View style={styles.headerRow}>
         <IconButton
           icon={X}
@@ -181,19 +176,11 @@ function SheetHeader({
           onPress={onCancel}
           accessibilityLabel="Cancel"
         />
-        <Heading style={{ fontSize: 18 }}>
+        <Heading style={{ fontSize: 17 }}>
           {mode === 'create' ? 'New habit' : 'Edit habit'}
         </Heading>
-        <Button
-          variant="primary"
-          size="sm"
-          onPress={onSave}
-          disabled={!valid || saving}
-          loading={saving}
-          accessibilityLabel={mode === 'create' ? 'Save habit' : 'Done editing habit'}
-        >
-          {mode === 'create' ? 'Save' : 'Done'}
-        </Button>
+        {/* spacer keeps title centred */}
+        <View style={styles.headerSpacer} />
       </View>
 
       {showDiscardStrip && (
@@ -221,7 +208,44 @@ function SheetHeader({
       )}
 
       <View style={[styles.headerDivider, { backgroundColor: colors.hairline }]} />
-    </BottomSheetView>
+    </View>
+  );
+}
+
+// ─── Save bar ─────────────────────────────────────────────────────────────
+
+type SheetSaveBarProps = BottomSheetFooterProps & {
+  mode: 'create' | 'edit';
+  onSave: () => void;
+  saving: boolean;
+  valid: boolean;
+};
+
+function SheetSaveBar({ animatedFooterPosition, mode, onSave, saving, valid }: SheetSaveBarProps) {
+  const { colors, spacing } = useTheme();
+
+  return (
+    <BottomSheetFooter animatedFooterPosition={animatedFooterPosition}>
+      <View
+        style={[
+          styles.saveBar,
+          { backgroundColor: colors.surface, borderTopColor: colors.hairline },
+          { paddingHorizontal: spacing[4] },
+        ]}
+      >
+        <Button
+          variant="primary"
+          size="md"
+          fullWidth
+          onPress={onSave}
+          disabled={!valid || saving}
+          loading={saving}
+          accessibilityLabel={mode === 'create' ? 'Save habit' : 'Done editing habit'}
+        >
+          {mode === 'create' ? 'Save habit' : 'Done'}
+        </Button>
+      </View>
+    </BottomSheetFooter>
   );
 }
 
@@ -792,6 +816,19 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(
 
     const isSaving = isSubmitting || createMutation.isPending || updateMutation.isPending;
 
+    const renderFooter = useCallback(
+      (props: BottomSheetFooterProps) => (
+        <SheetSaveBar
+          {...props}
+          mode={mode}
+          onSave={handleSave}
+          saving={isSaving}
+          valid={isValid}
+        />
+      ),
+      [mode, handleSave, isSaving, isValid],
+    );
+
     // Block drag-to-dismiss when editing with unsaved changes
     const canDragDismiss = mode === 'create' || !isDirty;
 
@@ -814,14 +851,13 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(
         snapPoints={['85%']}
         raw
         enablePanDownToClose={canDragDismiss}
+        footerComponent={renderFooter}
       >
+        <View style={styles.sheetInner}>
         {/* ── Sticky header ── */}
         <SheetHeader
           mode={mode}
           onCancel={handleCancel}
-          onSave={handleSave}
-          saving={isSaving}
-          valid={isValid}
           showDiscardStrip={showDiscardStrip}
           onKeepEditing={() => setShowDiscardStrip(false)}
           onDiscard={closeSheet}
@@ -832,7 +868,7 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingHorizontal: spacing[4], paddingBottom: 60 },
+            { paddingHorizontal: spacing[4], paddingBottom: 88 },
           ]}
           showsVerticalScrollIndicator={false}
         >
@@ -976,6 +1012,7 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(
             </>
           )}
         </BottomSheetScrollView>
+        </View>
       </BottomSheet>
 
       {/* Pre-prompt sheet — shown when permission is undetermined and the user sets a reminder */}
@@ -1010,6 +1047,9 @@ function SectionDivider() {
 // ─── Styles ────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  sheetInner: {
+    flex: 1,
+  },
   headerContainer: {
     paddingTop: 4,
   },
@@ -1021,8 +1061,15 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     minHeight: 52,
   },
+  headerSpacer: {
+    width: 40,
+  },
   headerDivider: {
     height: StyleSheet.hairlineWidth,
+  },
+  saveBar: {
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
 
   discardStrip: {

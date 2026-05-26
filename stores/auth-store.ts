@@ -2,7 +2,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { create } from 'zustand';
 import { logger } from '@/lib/logger';
 import { bootstrapProfile } from '@/lib/profile';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase';
 
 export type AuthStatus = 'idle' | 'loading' | 'authenticated' | 'unauthenticated';
 export type SendStatus = 'idle' | 'sending' | 'sent' | 'error';
@@ -55,8 +55,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   initialize: async () => {
     set({ status: 'loading' });
 
-    const { data } = await supabase.auth.getSession();
-    const session = data.session;
+    let session = null;
+    try {
+      const { data } = await supabase.auth.getSession();
+      session = data.session;
+    } catch (e) {
+      logger.error('auth.getSession failed', e instanceof Error ? e.message : String(e));
+    }
     set({
       session,
       user: session?.user ?? null,

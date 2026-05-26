@@ -138,10 +138,9 @@ export async function scheduleHabitReminder(habit: Habit): Promise<string | null
       },
       trigger: Platform.OS === 'android'
         ? {
-            type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+            type: Notifications.SchedulableTriggerInputTypes.DAILY,
             hour,
             minute,
-            repeats: true,
             channelId: 'habit-reminders',
           }
         : {

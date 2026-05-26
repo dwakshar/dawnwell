@@ -21,7 +21,6 @@ export default function AppearanceScreen() {
   const { colors, spacing, radii } = useTheme();
   const router = useRouter();
   const { preference, setPreference } = useThemeStore();
-  const reducedMotion = useReducedMotion();
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.bg }]} edges={['top']}>
@@ -43,7 +42,7 @@ export default function AppearanceScreen() {
         showsVerticalScrollIndicator={false}>
 
         {/* Picker */}
-        <Card variant="flat" style={[styles.pickerCard, { gap: spacing[3] }]}>
+        <Card variant="flat" style={{ ...styles.pickerCard, gap: spacing[3] }}>
           <Caption color="ink-mute">Theme</Caption>
           <View style={styles.pickerRow}>
             {OPTIONS.map(({ value, label, Icon }) => {
