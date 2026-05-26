@@ -13,76 +13,63 @@
  *   sheetRef.current?.close()
  */
 
-import React, {
-  forwardRef,
-  useCallback,
-  useImperativeHandle,
-  useRef,
-  useState,
-} from 'react';
-import {
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  View,
-} from 'react-native';
+import { useMotion } from '@/lib/hooks/use-motion';
+import { zodResolver } from '@hookform/resolvers/zod';
+import type { DateTimePickerChangeEvent } from '@react-native-community/datetimepicker';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { format } from 'date-fns';
 import * as Linking from 'expo-linking';
+import { Check, X } from 'lucide-react-native';
+import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
+import { useController, useForm } from 'react-hook-form';
+import { Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { useMotion } from '@/lib/hooks/use-motion';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import type { DateTimePickerChangeEvent } from '@react-native-community/datetimepicker';
-import { format } from 'date-fns';
-import { useController, useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, X } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import TargetStepper from '@/components/habits/target-stepper';
+import PrePromptSheet, {
+  type PrePromptSheetHandle,
+} from '@/components/notifications/pre-prompt-sheet';
 import BottomSheet, {
-  BottomSheetScrollView,
   BottomSheetFooter,
+  BottomSheetScrollView,
   type BottomSheetFooterProps,
 } from '@/components/ui/bottom-sheet';
 import Button from '@/components/ui/button';
 import IconButton from '@/components/ui/icon-button';
 import Input from '@/components/ui/input';
 import Skeleton from '@/components/ui/skeleton';
-import TargetStepper from '@/components/habits/target-stepper';
 import { Body, Caption, Heading, Label } from '@/components/ui/typography';
-import { useTheme } from '@/theme/ThemeProvider';
+import { getHabit } from '@/db/repos/habits';
+import type { Habit, Ritual } from '@/db/schema';
 import * as haptics from '@/lib/haptics';
 import { logger } from '@/lib/logger';
-import { queryKeys } from '@/lib/query-keys';
-import { getRituals } from '@/lib/queries/rituals';
 import {
-  createHabit,
-  updateHabit,
   archiveHabit,
+  createHabit,
   deleteHabitHard,
+  updateHabit,
 } from '@/lib/mutations/habit';
-import { getHabit } from '@/db/repos/habits';
-import { HabitFormSchema, type HabitFormValues } from '@/lib/schemas/habit-form';
+import {
+  cancelHabitReminder,
+  getPermissionStatus,
+  scheduleHabitReminder,
+} from '@/lib/notifications';
 import {
   getDefaultFormValues,
   HABIT_COLORS,
   HABIT_ICONS,
-  ICON_MAP,
 } from '@/lib/presets/habit-presets';
-import type { Habit, Ritual } from '@/db/schema';
+import { getRituals } from '@/lib/queries/rituals';
+import { queryKeys } from '@/lib/query-keys';
+import { HabitFormSchema, type HabitFormValues } from '@/lib/schemas/habit-form';
 import { storage, StorageKey } from '@/lib/storage';
-import {
-  getPermissionStatus,
-  scheduleHabitReminder,
-  cancelHabitReminder,
-} from '@/lib/notifications';
-import PrePromptSheet, {
-  type PrePromptSheetHandle,
-} from '@/components/notifications/pre-prompt-sheet';
+import { useTheme } from '@/theme/ThemeProvider';
 
 // ─── Public handle ─────────────────────────────────────────────────────────
 
@@ -140,8 +127,11 @@ function SectionLabel({ children }: { children: string }) {
   const { colors } = useTheme();
   return (
     <Label
-      style={{ color: colors['ink-mute'], marginBottom: 10, fontFamily: 'Inter_600SemiBold' }}
-    >
+      style={{
+        color: colors['ink-mute'],
+        marginBottom: 10,
+        fontFamily: 'Inter_600SemiBold',
+      }}>
       {children}
     </Label>
   );
@@ -190,8 +180,7 @@ function SheetHeader({
             <Pressable
               onPress={onKeepEditing}
               accessibilityLabel="Keep editing"
-              accessibilityRole="button"
-            >
+              accessibilityRole="button">
               <Label style={{ color: colors.accent, fontFamily: 'Inter_600SemiBold' }}>
                 Keep editing
               </Label>
@@ -199,8 +188,7 @@ function SheetHeader({
             <Pressable
               onPress={onDiscard}
               accessibilityLabel="Discard changes"
-              accessibilityRole="button"
-            >
+              accessibilityRole="button">
               <Label style={{ color: colors['ink-mute'] }}>Discard</Label>
             </Pressable>
           </View>
@@ -221,7 +209,13 @@ type SheetSaveBarProps = BottomSheetFooterProps & {
   valid: boolean;
 };
 
-function SheetSaveBar({ animatedFooterPosition, mode, onSave, saving, valid }: SheetSaveBarProps) {
+function SheetSaveBar({
+  animatedFooterPosition,
+  mode,
+  onSave,
+  saving,
+  valid,
+}: SheetSaveBarProps) {
   const { colors, spacing } = useTheme();
 
   return (
@@ -231,8 +225,7 @@ function SheetSaveBar({ animatedFooterPosition, mode, onSave, saving, valid }: S
           styles.saveBar,
           { backgroundColor: colors.surface, borderTopColor: colors.hairline },
           { paddingHorizontal: spacing[4] },
-        ]}
-      >
+        ]}>
         <Button
           variant="primary"
           size="md"
@@ -240,8 +233,7 @@ function SheetSaveBar({ animatedFooterPosition, mode, onSave, saving, valid }: S
           onPress={onSave}
           disabled={!valid || saving}
           loading={saving}
-          accessibilityLabel={mode === 'create' ? 'Save habit' : 'Done editing habit'}
-        >
+          accessibilityLabel={mode === 'create' ? 'Save habit' : 'Done editing habit'}>
           {mode === 'create' ? 'Save habit' : 'Done'}
         </Button>
       </View>
@@ -266,8 +258,7 @@ function RitualPicker({ rituals, value, onChange }: RitualPickerProps) {
       showsHorizontalScrollIndicator={false}
       style={styles.pillScroll}
       contentContainerStyle={styles.pillScrollContent}
-      keyboardShouldPersistTaps="handled"
-    >
+      keyboardShouldPersistTaps="handled">
       {rituals.map((r) => {
         const selected = r.id === value;
         return (
@@ -286,14 +277,12 @@ function RitualPicker({ rituals, value, onChange }: RitualPickerProps) {
                 backgroundColor: selected ? colors.accent : colors['surface-2'],
                 borderRadius: radii.pill,
               },
-            ]}
-          >
+            ]}>
             <Label
               style={{
                 color: selected ? '#ffffff' : colors.ink,
                 fontFamily: selected ? 'Inter_600SemiBold' : 'Inter_400Regular',
-              }}
-            >
+              }}>
               {r.name}
             </Label>
           </Pressable>
@@ -334,8 +323,7 @@ function IconPicker({ value, selectedColor, onChange }: IconPickerProps) {
                 backgroundColor: selected ? selectedColor : colors['surface-2'],
                 borderRadius: 10,
               },
-            ]}
-          >
+            ]}>
             <Component size={20} color={selected ? '#ffffff' : colors['ink-mute']} />
           </Pressable>
         );
@@ -372,11 +360,8 @@ function ColorPicker({ value, onChange }: ColorPickerProps) {
               styles.colorSwatch,
               { backgroundColor: c },
               selected && { borderWidth: 2.5, borderColor: colors.ink },
-            ]}
-          >
-            {selected && (
-              <Check size={14} color="#ffffff" strokeWidth={3} />
-            )}
+            ]}>
+            {selected && <Check size={14} color="#ffffff" strokeWidth={3} />}
           </Pressable>
         );
       })}
@@ -445,10 +430,11 @@ function ReminderSection({
       <Animated.View style={animStyle}>
         <Pressable
           onPress={() => setShowPicker((v) => !v)}
-          accessibilityLabel={`Reminder time, currently ${enabled && reminderTime ? displayTime(reminderTime) : 'not set'}`}
+          accessibilityLabel={`Reminder time, currently ${
+            enabled && reminderTime ? displayTime(reminderTime) : 'not set'
+          }`}
           accessibilityRole="button"
-          style={[styles.timeRow, { borderColor: colors.hairline }]}
-        >
+          style={[styles.timeRow, { borderColor: colors.hairline }]}>
           <Body color={reminderTime ? 'ink' : 'ink-mute'}>
             {enabled && reminderTime ? displayTime(reminderTime) : '8:00 AM'}
           </Body>
@@ -500,8 +486,7 @@ function EditFooter({
         size="md"
         fullWidth
         onPress={onArchive}
-        accessibilityLabel={archiveLabel}
-      >
+        accessibilityLabel={archiveLabel}>
         {archiveLabel}
       </Button>
 
@@ -509,8 +494,7 @@ function EditFooter({
         onPress={onDeletePress}
         accessibilityLabel="Delete habit permanently"
         accessibilityRole="button"
-        style={styles.deleteLink}
-      >
+        style={styles.deleteLink}>
         <Caption color="ink-mute">Delete permanently</Caption>
       </Pressable>
 
@@ -519,8 +503,7 @@ function EditFooter({
           style={[
             styles.deleteConfirm,
             { backgroundColor: colors['surface-2'], borderRadius: radii.card },
-          ]}
-        >
+          ]}>
           <Body color="ink-soft" style={styles.deleteConfirmText}>
             This removes the habit and all its check-ins. This cannot be undone.
           </Body>
@@ -529,8 +512,7 @@ function EditFooter({
               variant="secondary"
               size="sm"
               onPress={onDeleteCancel}
-              accessibilityLabel="Cancel deletion"
-            >
+              accessibilityLabel="Cancel deletion">
               Cancel
             </Button>
             <Button
@@ -538,8 +520,7 @@ function EditFooter({
               size="sm"
               onPress={onDeleteConfirm}
               loading={deleting}
-              accessibilityLabel="Delete habit forever"
-            >
+              accessibilityLabel="Delete habit forever">
               Delete forever
             </Button>
           </View>
@@ -551,467 +532,476 @@ function EditFooter({
 
 // ─── Main sheet ────────────────────────────────────────────────────────────
 
-const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(
-  function HabitSheet({ onClose }, ref) {
-    const { colors, spacing } = useTheme();
-    const queryClient = useQueryClient();
+const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(function HabitSheet(
+  { onClose },
+  ref,
+) {
+  const { colors, spacing } = useTheme();
+  const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
 
-    // — Sheet state
-    const [isOpen, setIsOpen] = useState(false);
-    const [mode, setMode] = useState<'create' | 'edit'>('create');
-    const [currentHabitId, setCurrentHabitId] = useState<string | null>(null);
+  // — Sheet state
+  const [isOpen, setIsOpen] = useState(false);
+  const [mode, setMode] = useState<'create' | 'edit'>('create');
+  const [currentHabitId, setCurrentHabitId] = useState<string | null>(null);
 
-    // — Confirm UX state
-    const [submitFailed, setSubmitFailed] = useState(false);
-    const [mutationError, setMutationError] = useState<string | null>(null);
-    const [showDiscardStrip, setShowDiscardStrip] = useState(false);
-    const [showDeniedNotice, setShowDeniedNotice] = useState(false);
+  // — Confirm UX state
+  const [submitFailed, setSubmitFailed] = useState(false);
+  const [mutationError, setMutationError] = useState<string | null>(null);
+  const [showDiscardStrip, setShowDiscardStrip] = useState(false);
+  const [showDeniedNotice, setShowDeniedNotice] = useState(false);
 
-    // — Notification refs
-    const pendingHabitRef = useRef<Habit | null>(null);
-    const prePromptRef = useRef<PrePromptSheetHandle>(null);
-    const discardStripTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const [archiveLabel, setArchiveLabel] = useState('Archive habit');
-    const archiveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const archivePending = useRef(false);
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // — Notification refs
+  const pendingHabitRef = useRef<Habit | null>(null);
+  const prePromptRef = useRef<PrePromptSheetHandle>(null);
+  const discardStripTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [archiveLabel, setArchiveLabel] = useState('Archive habit');
+  const archiveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const archivePending = useRef(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-    // — Form
-    const {
-      control,
-      handleSubmit,
-      reset,
-      watch,
-      formState: { isValid, isSubmitting, isDirty },
-    } = useForm<HabitFormValues>({
-      resolver: zodResolver(HabitFormSchema),
-      mode: 'onChange',
-      defaultValues: getDefaultFormValues(null),
-    });
+  // — Form
+  const {
+    control,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { isValid, isSubmitting, isDirty },
+  } = useForm<HabitFormValues>({
+    resolver: zodResolver(HabitFormSchema),
+    mode: 'onChange',
+    defaultValues: getDefaultFormValues(null),
+  });
 
-    const watchedColor = watch('color');
-    const watchedReminderEnabled = watch('reminderEnabled');
-    const watchedReminderTime = watch('reminderTime');
-    const watchedTarget = watch('target');
+  const watchedColor = watch('color');
+  const watchedReminderEnabled = watch('reminderEnabled');
+  const watchedReminderTime = watch('reminderTime');
+  const watchedTarget = watch('target');
 
-    // — Rituals query
-    const { data: rituals = [] } = useQuery({
-      queryKey: queryKeys.rituals(),
-      queryFn: getRituals,
-    });
+  // — Rituals query
+  const { data: rituals = [] } = useQuery({
+    queryKey: queryKeys.rituals(),
+    queryFn: getRituals,
+  });
 
-    // — Mutations
-    const todayQueryKey = queryKeys.todayView(new Date().toISOString().slice(0, 10));
+  // — Mutations
+  const todayQueryKey = queryKeys.todayView(new Date().toISOString().slice(0, 10));
 
-    const createMutation = useMutation({
-      mutationFn: createHabit,
-      onSuccess: (habit) => {
-        queryClient.invalidateQueries({ queryKey: queryKeys.habits() });
-        queryClient.invalidateQueries({ queryKey: todayQueryKey });
-        void handlePostSave(habit);
-      },
-      onError: (err) => {
-        logger.error('createHabit failed', err);
-        setMutationError("Couldn't save. Try again.");
-      },
-    });
+  const createMutation = useMutation({
+    mutationFn: createHabit,
+    onSuccess: (habit) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.habits() });
+      queryClient.invalidateQueries({ queryKey: todayQueryKey });
+      void handlePostSave(habit);
+    },
+    onError: (err) => {
+      logger.error('createHabit failed', err);
+      setMutationError("Couldn't save. Try again.");
+    },
+  });
 
-    const updateMutation = useMutation({
-      mutationFn: ({ id, values }: { id: string; values: HabitFormValues }) =>
-        updateHabit(id, values),
-      onSuccess: (habit) => {
-        queryClient.invalidateQueries({ queryKey: queryKeys.habits() });
-        queryClient.invalidateQueries({ queryKey: todayQueryKey });
-        void handlePostSave(habit);
-      },
-      onError: (err) => {
-        logger.error('updateHabit failed', err);
-        setMutationError("Couldn't save. Try again.");
-      },
-    });
+  const updateMutation = useMutation({
+    mutationFn: ({ id, values }: { id: string; values: HabitFormValues }) =>
+      updateHabit(id, values),
+    onSuccess: (habit) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.habits() });
+      queryClient.invalidateQueries({ queryKey: todayQueryKey });
+      void handlePostSave(habit);
+    },
+    onError: (err) => {
+      logger.error('updateHabit failed', err);
+      setMutationError("Couldn't save. Try again.");
+    },
+  });
 
-    const archiveMutation = useMutation({
-      mutationFn: archiveHabit,
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: queryKeys.habits() });
-        queryClient.invalidateQueries({ queryKey: todayQueryKey });
-        haptics.success();
+  const archiveMutation = useMutation({
+    mutationFn: archiveHabit,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.habits() });
+      queryClient.invalidateQueries({ queryKey: todayQueryKey });
+      haptics.success();
+      closeSheet();
+    },
+    onError: (err) => {
+      logger.error('archiveHabit failed', err);
+      setMutationError("Couldn't archive. Try again.");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteHabitHard,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.habits() });
+      queryClient.invalidateQueries({ queryKey: todayQueryKey });
+      haptics.warning();
+      closeSheet();
+    },
+    onError: (err) => {
+      logger.error('deleteHabitHard failed', err);
+      setMutationError("Couldn't delete. Try again.");
+    },
+  });
+
+  // — Cleanup timers
+  const clearTimers = () => {
+    if (discardStripTimer.current) clearTimeout(discardStripTimer.current);
+    if (archiveTimer.current) clearTimeout(archiveTimer.current);
+  };
+
+  // — Sheet lifecycle
+  const resetSheetState = () => {
+    setSubmitFailed(false);
+    setMutationError(null);
+    setShowDiscardStrip(false);
+    setShowDeleteConfirm(false);
+    setShowDeniedNotice(false);
+    setArchiveLabel('Archive habit');
+    archivePending.current = false;
+    clearTimers();
+  };
+
+  const closeSheet = () => {
+    resetSheetState();
+    pendingHabitRef.current = null;
+    setIsOpen(false);
+    onClose?.();
+  };
+
+  // ─── Notification helpers ────────────────────────────────────────────────
+
+  const FOURTEEN_DAYS = 14 * 24 * 60 * 60 * 1000;
+
+  const shouldShowPrePrompt = () => {
+    const dismissedAt = storage.getNumber(StorageKey.NOTIF_PREPROMPT_DISMISSED);
+    if (dismissedAt == null) return true;
+    return Date.now() - dismissedAt > FOURTEEN_DAYS;
+  };
+
+  const handlePostSave = async (habit: Habit) => {
+    if (habit.reminderTime == null) {
+      void cancelHabitReminder(habit.id);
+      closeSheet();
+      return;
+    }
+    const status = await getPermissionStatus();
+    if (status === 'granted') {
+      void scheduleHabitReminder(habit);
+      closeSheet();
+    } else if (status === 'denied') {
+      // Habit saved, schedule blocked. Show inline notice — user closes sheet manually.
+      setShowDeniedNotice(true);
+    } else {
+      // 'undetermined' — show pre-prompt at most once per 14 days
+      if (shouldShowPrePrompt()) {
+        pendingHabitRef.current = habit;
+        prePromptRef.current?.open();
+      } else {
         closeSheet();
-      },
-      onError: (err) => {
-        logger.error('archiveHabit failed', err);
-        setMutationError("Couldn't archive. Try again.");
-      },
-    });
+      }
+    }
+  };
 
-    const deleteMutation = useMutation({
-      mutationFn: deleteHabitHard,
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: queryKeys.habits() });
-        queryClient.invalidateQueries({ queryKey: todayQueryKey });
-        haptics.warning();
-        closeSheet();
-      },
-      onError: (err) => {
-        logger.error('deleteHabitHard failed', err);
-        setMutationError("Couldn't delete. Try again.");
-      },
-    });
-
-    // — Cleanup timers
-    const clearTimers = () => {
-      if (discardStripTimer.current) clearTimeout(discardStripTimer.current);
-      if (archiveTimer.current) clearTimeout(archiveTimer.current);
-    };
-
-    // — Sheet lifecycle
-    const resetSheetState = () => {
-      setSubmitFailed(false);
-      setMutationError(null);
-      setShowDiscardStrip(false);
-      setShowDeleteConfirm(false);
-      setShowDeniedNotice(false);
-      setArchiveLabel('Archive habit');
-      archivePending.current = false;
-      clearTimers();
-    };
-
-    const closeSheet = () => {
+  // — Imperative handle
+  useImperativeHandle(ref, () => ({
+    openCreate: (defaultRitualId?: string) => {
       resetSheetState();
-      pendingHabitRef.current = null;
-      setIsOpen(false);
-      onClose?.();
-    };
-
-    // ─── Notification helpers ────────────────────────────────────────────────
-
-    const FOURTEEN_DAYS = 14 * 24 * 60 * 60 * 1000;
-
-    const shouldShowPrePrompt = () => {
-      const dismissedAt = storage.getNumber(StorageKey.NOTIF_PREPROMPT_DISMISSED);
-      if (dismissedAt == null) return true;
-      return Date.now() - dismissedAt > FOURTEEN_DAYS;
-    };
-
-    const handlePostSave = async (habit: Habit) => {
-      if (habit.reminderTime == null) {
-        void cancelHabitReminder(habit.id);
-        closeSheet();
-        return;
-      }
-      const status = await getPermissionStatus();
-      if (status === 'granted') {
-        void scheduleHabitReminder(habit);
-        closeSheet();
-      } else if (status === 'denied') {
-        // Habit saved, schedule blocked. Show inline notice — user closes sheet manually.
-        setShowDeniedNotice(true);
-      } else {
-        // 'undetermined' — show pre-prompt at most once per 14 days
-        if (shouldShowPrePrompt()) {
-          pendingHabitRef.current = habit;
-          prePromptRef.current?.open();
-        } else {
-          closeSheet();
-        }
-      }
-    };
-
-    // — Imperative handle
-    useImperativeHandle(ref, () => ({
-      openCreate: (defaultRitualId?: string) => {
+      setMode('create');
+      setCurrentHabitId(null);
+      const cachedRituals = queryClient.getQueryData<Ritual[]>(queryKeys.rituals()) ?? [];
+      const ritualId = defaultRitualId ?? cachedRituals[0]?.id ?? '';
+      reset(getDefaultFormValues(ritualId));
+      setIsOpen(true);
+    },
+    openEdit: (habitId: string) => {
+      void getHabit(habitId).then((row) => {
+        if (!row) return;
         resetSheetState();
-        setMode('create');
-        setCurrentHabitId(null);
-        const cachedRituals = queryClient.getQueryData<Ritual[]>(queryKeys.rituals()) ?? [];
-        const ritualId = defaultRitualId ?? cachedRituals[0]?.id ?? '';
-        reset(getDefaultFormValues(ritualId));
+        setMode('edit');
+        setCurrentHabitId(habitId);
+        reset(mapHabitToFormValues(row));
         setIsOpen(true);
-      },
-      openEdit: (habitId: string) => {
-        void getHabit(habitId).then((row) => {
-          if (!row) return;
-          resetSheetState();
-          setMode('edit');
-          setCurrentHabitId(habitId);
-          reset(mapHabitToFormValues(row));
-          setIsOpen(true);
-        });
-      },
-      close: closeSheet,
-    }));
+      });
+    },
+    close: closeSheet,
+  }));
 
-    // — Cancel / dismiss
-    const handleCancel = useCallback(() => {
-      if (mode === 'edit' && isDirty) {
-        if (showDiscardStrip) {
-          // second tap → discard
-          closeSheet();
-        } else {
-          setShowDiscardStrip(true);
-          discardStripTimer.current = setTimeout(() => {
-            setShowDiscardStrip(false);
-          }, 4000);
-        }
-      } else {
+  // — Cancel / dismiss
+  const handleCancel = useCallback(() => {
+    if (mode === 'edit' && isDirty) {
+      if (showDiscardStrip) {
+        // second tap → discard
         closeSheet();
-      }
-    }, [mode, isDirty, showDiscardStrip]);
-
-    // When gorhom drag-down closes the sheet, reconcile state
-    const handleSheetClose = useCallback(() => {
-      // Only allow silent dismiss if form is clean (or create mode)
-      if (mode === 'create' || !isDirty) {
-        closeSheet();
-      }
-      // If dirty edit — enablePanDownToClose is false so this won't fire from drag.
-      // It CAN fire from our own setIsOpen(false), which is intentional.
-    }, [mode, isDirty]);
-
-    // — Save
-    const handleSave = handleSubmit(
-      async (values) => {
-        setMutationError(null);
-        if (mode === 'create') {
-          createMutation.mutate(values);
-        } else if (currentHabitId) {
-          updateMutation.mutate({ id: currentHabitId, values });
-        }
-      },
-      () => {
-        setSubmitFailed(true);
-      },
-    );
-
-    // — Archive (double-tap confirm)
-    const handleArchive = useCallback(() => {
-      if (!currentHabitId) return;
-      if (!archivePending.current) {
-        haptics.warning();
-        archivePending.current = true;
-        setArchiveLabel('Tap again to archive');
-        archiveTimer.current = setTimeout(() => {
-          archivePending.current = false;
-          setArchiveLabel('Archive habit');
-        }, 3000);
       } else {
-        if (archiveTimer.current) clearTimeout(archiveTimer.current);
+        setShowDiscardStrip(true);
+        discardStripTimer.current = setTimeout(() => {
+          setShowDiscardStrip(false);
+        }, 4000);
+      }
+    } else {
+      closeSheet();
+    }
+  }, [mode, isDirty, showDiscardStrip]);
+
+  // When gorhom drag-down closes the sheet, reconcile state
+  const handleSheetClose = useCallback(() => {
+    // Only allow silent dismiss if form is clean (or create mode)
+    if (mode === 'create' || !isDirty) {
+      closeSheet();
+    }
+    // If dirty edit — enablePanDownToClose is false so this won't fire from drag.
+    // It CAN fire from our own setIsOpen(false), which is intentional.
+  }, [mode, isDirty]);
+
+  // — Save
+  const handleSave = handleSubmit(
+    async (values) => {
+      setMutationError(null);
+      if (mode === 'create') {
+        createMutation.mutate(values);
+      } else if (currentHabitId) {
+        updateMutation.mutate({ id: currentHabitId, values });
+      }
+    },
+    () => {
+      setSubmitFailed(true);
+    },
+  );
+
+  // — Archive (double-tap confirm)
+  const handleArchive = useCallback(() => {
+    if (!currentHabitId) return;
+    if (!archivePending.current) {
+      haptics.warning();
+      archivePending.current = true;
+      setArchiveLabel('Tap again to archive');
+      archiveTimer.current = setTimeout(() => {
         archivePending.current = false;
         setArchiveLabel('Archive habit');
-        // Cancel notification before archive — archived habits must not fire reminders
-        void cancelHabitReminder(currentHabitId).then(() => {
-          archiveMutation.mutate(currentHabitId);
-        });
-      }
-    }, [currentHabitId, archiveMutation]);
-
-    // — Delete
-    const handleDeleteConfirm = useCallback(() => {
-      if (!currentHabitId) return;
-      // Cancel notification BEFORE deleting — the row must still exist to read reminderNotificationId
+      }, 3000);
+    } else {
+      if (archiveTimer.current) clearTimeout(archiveTimer.current);
+      archivePending.current = false;
+      setArchiveLabel('Archive habit');
+      // Cancel notification before archive — archived habits must not fire reminders
       void cancelHabitReminder(currentHabitId).then(() => {
-        deleteMutation.mutate(currentHabitId);
+        archiveMutation.mutate(currentHabitId);
       });
-    }, [currentHabitId, deleteMutation]);
+    }
+  }, [currentHabitId, archiveMutation]);
 
-    const isSaving = isSubmitting || createMutation.isPending || updateMutation.isPending;
+  // — Delete
+  const handleDeleteConfirm = useCallback(() => {
+    if (!currentHabitId) return;
+    // Cancel notification BEFORE deleting — the row must still exist to read reminderNotificationId
+    void cancelHabitReminder(currentHabitId).then(() => {
+      deleteMutation.mutate(currentHabitId);
+    });
+  }, [currentHabitId, deleteMutation]);
 
-    const renderFooter = useCallback(
-      (props: BottomSheetFooterProps) => (
-        <SheetSaveBar
-          {...props}
-          mode={mode}
-          onSave={handleSave}
-          saving={isSaving}
-          valid={isValid}
-        />
-      ),
-      [mode, handleSave, isSaving, isValid],
-    );
+  const isSaving = isSubmitting || createMutation.isPending || updateMutation.isPending;
 
-    // Block drag-to-dismiss when editing with unsaved changes
-    const canDragDismiss = mode === 'create' || !isDirty;
+  const renderFooter = useCallback(
+    (props: BottomSheetFooterProps) => (
+      <SheetSaveBar
+        {...props}
+        mode={mode}
+        onSave={handleSave}
+        saving={isSaving}
+        valid={isValid}
+      />
+    ),
+    [mode, handleSave, isSaving, isValid],
+  );
 
-    // — Field controllers
-    const { field: nameField, fieldState: nameState } = useController({ control, name: 'name' });
-    const { field: ritualField } = useController({ control, name: 'ritualId' });
-    const { field: iconField } = useController({ control, name: 'icon' });
-    const { field: colorField } = useController({ control, name: 'color' });
-    const { field: targetField } = useController({ control, name: 'target' });
-    const { field: reminderEnabledField } = useController({ control, name: 'reminderEnabled' });
-    const { field: reminderTimeField } = useController({ control, name: 'reminderTime' });
+  // Block drag-to-dismiss when editing with unsaved changes
+  const canDragDismiss = mode === 'create' || !isDirty;
 
-    const nameLength = nameField.value.length;
+  // — Field controllers
+  const { field: nameField, fieldState: nameState } = useController({
+    control,
+    name: 'name',
+  });
+  const { field: ritualField } = useController({ control, name: 'ritualId' });
+  const { field: iconField } = useController({ control, name: 'icon' });
+  const { field: colorField } = useController({ control, name: 'color' });
+  const { field: targetField } = useController({ control, name: 'target' });
+  const { field: reminderEnabledField } = useController({
+    control,
+    name: 'reminderEnabled',
+  });
+  const { field: reminderTimeField } = useController({ control, name: 'reminderTime' });
 
-    return (
-      <>
+  const nameLength = nameField.value.length;
+
+  return (
+    <>
       <BottomSheet
         open={isOpen}
         onClose={handleSheetClose}
         snapPoints={['85%']}
         raw
         enablePanDownToClose={canDragDismiss}
-        footerComponent={renderFooter}
-      >
+        footerComponent={renderFooter}>
         <View style={styles.sheetInner}>
-        {/* ── Sticky header ── */}
-        <SheetHeader
-          mode={mode}
-          onCancel={handleCancel}
-          showDiscardStrip={showDiscardStrip}
-          onKeepEditing={() => setShowDiscardStrip(false)}
-          onDiscard={closeSheet}
-        />
+          {/* ── Sticky header ── */}
+          <SheetHeader
+            mode={mode}
+            onCancel={handleCancel}
+            showDiscardStrip={showDiscardStrip}
+            onKeepEditing={() => setShowDiscardStrip(false)}
+            onDiscard={closeSheet}
+          />
 
-        {/* ── Scrollable body ── */}
-        <BottomSheetScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingHorizontal: spacing[4], paddingBottom: 88 },
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Mutation error strip */}
-          {mutationError && (
-            <View style={[styles.errorStrip, { backgroundColor: colors['surface-2'] }]}>
-              <Caption style={{ color: colors.accent }}>{mutationError}</Caption>
+          {/* ── Scrollable body ── */}
+          <BottomSheetScrollView
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingHorizontal: spacing[4], paddingBottom: 88 + insets.bottom },
+            ]}
+            showsVerticalScrollIndicator={false}>
+            {/* Mutation error strip */}
+            {mutationError && (
+              <View style={[styles.errorStrip, { backgroundColor: colors['surface-2'] }]}>
+                <Caption style={{ color: colors.accent }}>{mutationError}</Caption>
+              </View>
+            )}
+
+            {/* Notification denied notice */}
+            {showDeniedNotice && (
+              <View
+                style={[styles.deniedNotice, { backgroundColor: colors['surface-2'] }]}>
+                <Caption color="ink-soft" style={styles.deniedNoticeText}>
+                  Notifications are off in Settings. Open Settings to turn them on.
+                </Caption>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => void Linking.openSettings()}
+                  accessibilityLabel="Open notification settings">
+                  Open Settings
+                </Button>
+              </View>
+            )}
+
+            {/* Section 1 — Name */}
+            <View style={styles.section}>
+              <View style={styles.nameRow}>
+                <Input
+                  value={nameField.value}
+                  onChangeText={nameField.onChange}
+                  placeholder="Habit name"
+                  autoFocus={mode === 'create'}
+                  maxLength={42}
+                  autoCapitalize="sentences"
+                  returnKeyType="done"
+                  error={
+                    submitFailed && nameState.error ? nameState.error.message : undefined
+                  }
+                />
+                {nameLength > 30 && (
+                  <Caption color="ink-mute" style={styles.charCounter}>
+                    {nameLength}/40
+                  </Caption>
+                )}
+              </View>
             </View>
-          )}
 
-          {/* Notification denied notice */}
-          {showDeniedNotice && (
-            <View style={[styles.deniedNotice, { backgroundColor: colors['surface-2'] }]}>
-              <Caption color="ink-soft" style={styles.deniedNoticeText}>
-                Notifications are off in Settings. Open Settings to turn them on.
-              </Caption>
-              <Button
-                variant="ghost"
-                size="sm"
-                onPress={() => void Linking.openSettings()}
-                accessibilityLabel="Open notification settings"
-              >
-                Open Settings
-              </Button>
-            </View>
-          )}
+            <SectionDivider />
 
-          {/* Section 1 — Name */}
-          <View style={styles.section}>
-            <View style={styles.nameRow}>
-              <Input
-                value={nameField.value}
-                onChangeText={nameField.onChange}
-                placeholder="Habit name"
-                autoFocus={mode === 'create'}
-                maxLength={42}
-                autoCapitalize="sentences"
-                returnKeyType="done"
-                error={submitFailed && nameState.error ? nameState.error.message : undefined}
-              />
-              {nameLength > 30 && (
-                <Caption color="ink-mute" style={styles.charCounter}>
-                  {nameLength}/40
+            {/* Section 2 — Ritual */}
+            <View style={styles.section}>
+              <SectionLabel>Ritual</SectionLabel>
+              {rituals.length === 0 ? (
+                <View style={styles.skeletonRow}>
+                  <Skeleton width={80} height={32} radius={16} />
+                  <Skeleton width={64} height={32} radius={16} />
+                  <Skeleton width={72} height={32} radius={16} />
+                </View>
+              ) : (
+                <RitualPicker
+                  rituals={rituals}
+                  value={ritualField.value}
+                  onChange={ritualField.onChange}
+                />
+              )}
+              {submitFailed && !ritualField.value && (
+                <Caption style={{ ...styles.fieldError, color: colors['ink-mute'] }}>
+                  Pick a ritual
                 </Caption>
               )}
             </View>
-          </View>
 
-          <SectionDivider />
+            <SectionDivider />
 
-          {/* Section 2 — Ritual */}
-          <View style={styles.section}>
-            <SectionLabel>Ritual</SectionLabel>
-            {rituals.length === 0 ? (
-              <View style={styles.skeletonRow}>
-                <Skeleton width={80} height={32} radius={16} />
-                <Skeleton width={64} height={32} radius={16} />
-                <Skeleton width={72} height={32} radius={16} />
-              </View>
-            ) : (
-              <RitualPicker
-                rituals={rituals}
-                value={ritualField.value}
-                onChange={ritualField.onChange}
+            {/* Section 3 — Icon */}
+            <View style={styles.section}>
+              <SectionLabel>Icon</SectionLabel>
+              <IconPicker
+                value={iconField.value}
+                selectedColor={watchedColor}
+                onChange={iconField.onChange}
               />
-            )}
-            {submitFailed && !ritualField.value && (
-              <Caption style={{ ...styles.fieldError, color: colors['ink-mute'] }}>
-                Pick a ritual
-              </Caption>
-            )}
-          </View>
+            </View>
 
-          <SectionDivider />
+            <SectionDivider />
 
-          {/* Section 3 — Icon */}
-          <View style={styles.section}>
-            <SectionLabel>Icon</SectionLabel>
-            <IconPicker
-              value={iconField.value}
-              selectedColor={watchedColor}
-              onChange={iconField.onChange}
-            />
-          </View>
+            {/* Section 4 — Color */}
+            <View style={styles.section}>
+              <SectionLabel>Color</SectionLabel>
+              <ColorPicker value={colorField.value} onChange={colorField.onChange} />
+            </View>
 
-          <SectionDivider />
+            <SectionDivider />
 
-          {/* Section 4 — Color */}
-          <View style={styles.section}>
-            <SectionLabel>Color</SectionLabel>
-            <ColorPicker value={colorField.value} onChange={colorField.onChange} />
-          </View>
+            {/* Section 5 — Daily target */}
+            <View style={styles.section}>
+              <SectionLabel>Daily target</SectionLabel>
+              <TargetStepper
+                value={targetField.value}
+                onChange={targetField.onChange}
+                min={1}
+                max={12}
+              />
+            </View>
 
-          <SectionDivider />
+            <SectionDivider />
 
-          {/* Section 5 — Daily target */}
-          <View style={styles.section}>
-            <SectionLabel>Daily target</SectionLabel>
-            <TargetStepper
-              value={targetField.value}
-              onChange={targetField.onChange}
-              min={1}
-              max={12}
-            />
-          </View>
-
-          <SectionDivider />
-
-          {/* Section 6 — Reminder */}
-          <View style={styles.section}>
-            <SectionLabel>Reminder</SectionLabel>
-            <ReminderSection
-              enabled={watchedReminderEnabled}
-              onToggle={(v) => {
-                reminderEnabledField.onChange(v);
-                if (v && !watchedReminderTime) {
-                  reminderTimeField.onChange('08:00');
-                }
-              }}
-              reminderTime={watchedReminderTime}
-              onTimeChange={reminderTimeField.onChange}
-            />
-          </View>
-
-          {/* Section 7 — Edit actions */}
-          {mode === 'edit' && (
-            <>
-              <SectionDivider />
-              <EditFooter
-                onArchive={handleArchive}
-                archiveLabel={archiveLabel}
-                onDeletePress={() => {
-                  haptics.warning();
-                  setShowDeleteConfirm((v) => !v);
+            {/* Section 6 — Reminder */}
+            <View style={styles.section}>
+              <SectionLabel>Reminder</SectionLabel>
+              <ReminderSection
+                enabled={watchedReminderEnabled}
+                onToggle={(v) => {
+                  reminderEnabledField.onChange(v);
+                  if (v && !watchedReminderTime) {
+                    reminderTimeField.onChange('08:00');
+                  }
                 }}
-                showDeleteConfirm={showDeleteConfirm}
-                onDeleteCancel={() => setShowDeleteConfirm(false)}
-                onDeleteConfirm={handleDeleteConfirm}
-                deleting={deleteMutation.isPending}
+                reminderTime={watchedReminderTime}
+                onTimeChange={reminderTimeField.onChange}
               />
-            </>
-          )}
-        </BottomSheetScrollView>
+            </View>
+
+            {/* Section 7 — Edit actions */}
+            {mode === 'edit' && (
+              <>
+                <SectionDivider />
+                <EditFooter
+                  onArchive={handleArchive}
+                  archiveLabel={archiveLabel}
+                  onDeletePress={() => {
+                    haptics.warning();
+                    setShowDeleteConfirm((v) => !v);
+                  }}
+                  showDeleteConfirm={showDeleteConfirm}
+                  onDeleteCancel={() => setShowDeleteConfirm(false)}
+                  onDeleteConfirm={handleDeleteConfirm}
+                  deleting={deleteMutation.isPending}
+                />
+              </>
+            )}
+          </BottomSheetScrollView>
         </View>
       </BottomSheet>
 
@@ -1030,10 +1020,9 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(
           closeSheet();
         }}
       />
-      </>
-    );
-  },
-);
+    </>
+  );
+});
 
 export default HabitSheet;
 

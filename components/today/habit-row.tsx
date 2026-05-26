@@ -243,7 +243,7 @@ function CircularProgress({
   checkFillStyle,
   checkIconStyle,
 }: CircularProgressProps) {
-  const size = 36;
+  const size = 44;
   const stroke = 2.5;
   const radius = (size - stroke * 2) / 2;
   const circumference = 2 * Math.PI * radius;

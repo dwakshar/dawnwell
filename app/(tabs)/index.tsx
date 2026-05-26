@@ -4,7 +4,6 @@ import { Plus } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInUp, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
@@ -402,14 +401,6 @@ function RitualSection({
         </View>
       </View>
 
-      {/* Hairline fade (1.4) — subtle structure line below header */}
-      <LinearGradient
-        colors={[colors.hairline, 'transparent']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.headerHairline}
-        pointerEvents="none"
-      />
 
       <View
         style={[
@@ -562,7 +553,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 0,
+    marginBottom: 10,
   },
   sectionHeaderLeft: { flex: 1, gap: 1 },
   lastChecked: { fontSize: 11 },
@@ -583,11 +574,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-  },
-  headerHairline: {
-    height: 1,
-    marginTop: 6,
-    marginBottom: 6,
   },
   card: { overflow: 'hidden' },
   hairline: { height: StyleSheet.hairlineWidth, marginHorizontal: 16 },

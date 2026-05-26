@@ -90,34 +90,27 @@ export default function Card({
     transform: [{ scale: scale.value }],
   }));
 
-  // Raised shadow — strongest depth signal
+  // Raised shadow — iOS only for same reason as default shadow above.
   const raisedShadow: ViewStyle =
-    variant === 'raised'
-      ? Platform.select({
-          ios: {
-            shadowColor: isDark ? '#000' : '#0a1628',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDark ? 0.4 : 0.08,
-            shadowRadius: 8,
-          },
-          android: { elevation: 4 },
-          default: {},
-        }) ?? {}
+    variant === 'raised' && Platform.OS === 'ios'
+      ? {
+          shadowColor: isDark ? '#000' : '#0a1628',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: isDark ? 0.4 : 0.08,
+          shadowRadius: 8,
+        }
       : {};
 
-  // Default shadow (light mode only — dark mode uses the inset highlight approach)
+  // Default shadow — iOS only. Android elevation on every default card in a ScrollView
+  // causes expensive shadow re-composition on each frame and freezes the emulator.
   const defaultShadow: ViewStyle =
-    variant === 'default' && !isDark
-      ? Platform.select({
-          ios: {
-            shadowColor: '#0a1628',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.04,
-            shadowRadius: 3,
-          },
-          android: { elevation: 1 },
-          default: {},
-        }) ?? {}
+    variant === 'default' && !isDark && Platform.OS === 'ios'
+      ? {
+          shadowColor: '#0a1628',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.04,
+          shadowRadius: 3,
+        }
       : {};
 
   const containerStyle: ViewStyle = {
