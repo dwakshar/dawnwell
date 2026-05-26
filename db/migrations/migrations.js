@@ -4,12 +4,14 @@ import journal from './meta/_journal.json';
 import m0000 from './0000_thin_dracula.sql';
 import m0001 from './0001_add_reminder_notification_id.sql';
 import m0002 from './0002_add_sync_columns.sql';
+import m0003 from './0003_habit_color_remap.sql';
 
   export default {
     journal,
     migrations: {
       m0000,
       m0001,
-      m0002
+      m0002,
+      m0003,
     }
   }

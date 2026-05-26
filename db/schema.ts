@@ -5,14 +5,14 @@ export const RITUAL_SLOTS = ['morning', 'focus', 'evening', 'custom'] as const;
 export type RitualSlot = (typeof RITUAL_SLOTS)[number];
 
 export const HABIT_COLORS = [
-  '#c2410c',
-  '#9a3412',
-  '#d97706',
-  '#f59e0b',
-  '#65735a',
-  '#84a07a',
-  '#78716c',
-  '#44403c',
+  '#0066ff',
+  '#06b6d4',
+  '#0d9488',
+  '#4f46e5',
+  '#7c3aed',
+  '#0284c7',
+  '#475569',
+  '#10b981',
 ] as const;
 
 // ─── Tables ────────────────────────────────────────────────────────────────

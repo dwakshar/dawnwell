@@ -59,17 +59,17 @@ export const ICON_MAP: Record<string, LucideIcon> = Object.fromEntries(
   HABIT_ICONS.map(({ name, Component }) => [name, Component]),
 );
 
-// 8 warm-palette colours that harmonise with the Dawnwell token set
-// and hold legibility on both light (bg #f8f5f0) and dark (bg #0c0a09) surfaces.
+// 8 cool-palette colours (P11.7). Cohesive with the deep-blue + cyan theme.
+// Light-mode values; sit on the cool side of the spectrum (blue → cyan → teal → violet).
 export const HABIT_COLORS: string[] = [
-  '#c2410c', // Rust — the product accent; first/default pick
-  '#d97706', // Amber — from token; warm and energising
-  '#65735a', // Sage — from token; calm, earthy green
-  '#5b8fb9', // Soft blue — sky-adjacent; serene contrast to the warm set
-  '#c084a0', // Clay pink — dusty rose; gentle and warm
-  '#7c5e8c', // Deep plum — rich, quiet; holds on both modes
-  '#5a8a80', // Muted teal — earthen green-blue; balanced mid-ground
-  '#a89070', // Sand — parchment warm neutral; understated
+  '#0066ff', // Azure  — primary blue (matches accent)
+  '#06b6d4', // Cyan   — bright cyan
+  '#0d9488', // Teal   — deep teal
+  '#4f46e5', // Indigo — cool indigo
+  '#7c3aed', // Violet — soft violet
+  '#0284c7', // Sky    — sky blue
+  '#475569', // Slate  — neutral slate
+  '#10b981', // Mint   — cool mint-green
 ];
 
 export function getDefaultFormValues(ritualId: string | null): HabitFormValues {
@@ -77,7 +77,7 @@ export function getDefaultFormValues(ritualId: string | null): HabitFormValues {
     name: '',
     ritualId: ritualId ?? '',
     icon: 'Sparkles',
-    color: HABIT_COLORS[0] ?? '#c2410c',
+    color: HABIT_COLORS[0] ?? '#0066ff',
     target: 1,
     reminderEnabled: false,
     reminderTime: null,
