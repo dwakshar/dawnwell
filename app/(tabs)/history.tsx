@@ -31,7 +31,7 @@ import HabitDot from '@/components/ui/habit-dot';
 import IconButton from '@/components/ui/icon-button';
 import Reveal from '@/components/ui/reveal';
 import Skeleton from '@/components/ui/skeleton';
-import { Body, Caption, Heading, Label, Mono, Title } from '@/components/ui/typography';
+import { Body, Caption, Display, Heading, Label, Mono, Title } from '@/components/ui/typography';
 import type { Habit } from '@/db/schema';
 import {
   useDayDetail,
@@ -153,7 +153,7 @@ export default function HistoryScreen() {
     <SafeAreaView style={[styles.root, { backgroundColor: colors.bg }]} edges={['top']}>
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <View style={[styles.header, { paddingHorizontal: H_PAD }]}>
-        <Title>History</Title>
+        <Display style={{ fontSize: 32, lineHeight: 40 }}>History</Display>
         {!habitsLoading && (
           <Label color="ink-mute">
             {habitCount === 0

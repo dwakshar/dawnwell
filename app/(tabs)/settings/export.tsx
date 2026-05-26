@@ -6,7 +6,7 @@
  * once we've validated the export schema with real users.
  */
 
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { ArrowLeft, Download } from 'lucide-react-native';
@@ -64,15 +64,12 @@ export default function ExportScreen() {
       const json = JSON.stringify(exportData, null, 2);
       const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       const fileName = `dawnwell-export-${dateStr}.json`;
-      const path = `${FileSystem.documentDirectory}${fileName}`;
+      const file = new File(Paths.document, fileName);
+      file.write(json);
 
-      await FileSystem.writeAsStringAsync(path, json, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
+      setExportedPath(file.uri);
 
-      setExportedPath(path);
-
-      await Sharing.shareAsync(path, {
+      await Sharing.shareAsync(file.uri, {
         mimeType: 'application/json',
         dialogTitle: 'Export Dawnwell data',
         UTI: 'public.json',
@@ -102,24 +99,23 @@ export default function ExportScreen() {
         style={styles.scroll}
         contentContainerStyle={[styles.content, { paddingHorizontal: spacing[4] }]}
         showsVerticalScrollIndicator={false}>
-
         <Card variant="flat">
           <Body style={{ marginBottom: spacing[2] }}>What's included</Body>
           <Caption color="ink-mute">
-            All rituals, habits (including archived), and check-in history — exported as a JSON
-            file you can open in any text editor.
+            All rituals, habits (including archived), and check-in history — exported as a
+            JSON file you can open in any text editor.
           </Caption>
         </Card>
 
         <Card variant="flat">
           <Caption color="ink-mute">
-            Note: this is an export for your records. Importing data back into Dawnwell is not
-            available in v1 — it's planned for a future update.
+            Note: this is an export for your records. Importing data back into Dawnwell is
+            not available in v1 — it's planned for a future update.
           </Caption>
         </Card>
 
         {state === 'success' && (
-          <Card variant="flat" style={[styles.successCard, { borderColor: colors.sage }]}>
+          <Card variant="flat" style={{ borderWidth: 1, borderColor: colors.sage }}>
             <Body style={{ color: colors.sage }}>Exported successfully</Body>
             <Caption color="ink-mute">
               The file was shared. You can also find it in the app's documents folder.
@@ -128,7 +124,7 @@ export default function ExportScreen() {
         )}
 
         {state === 'error' && errorMsg && (
-          <Card variant="flat" style={[styles.errorCard, { borderColor: '#dc2626' }]}>
+          <Card variant="flat" style={{ borderWidth: 1, gap: 8, borderColor: '#dc2626' }}>
             <Body style={{ color: '#dc2626' }}>Export failed</Body>
             <Caption color="ink-mute">{errorMsg}</Caption>
             <Button
@@ -169,7 +165,5 @@ const styles = StyleSheet.create({
   },
   scroll: { flex: 1 },
   content: { gap: 12, paddingBottom: 48 },
-  successCard: { borderWidth: 1 },
-  errorCard: { borderWidth: 1, gap: 8 },
-  buttonRow: { marginTop: 8 },
+buttonRow: { marginTop: 8 },
 });

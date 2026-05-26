@@ -1,25 +1,26 @@
-import React, { useEffect } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Check } from 'lucide-react-native';
+import { useEffect } from 'react';
+import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 import Animated, {
+  type AnimatedStyle,
   Easing,
   interpolate,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withSequence,
   withSpring,
   withTiming,
-  withDelay,
 } from 'react-native-reanimated';
-import { Check } from 'lucide-react-native';
 import Svg, { Circle } from 'react-native-svg';
 
-import { useTheme } from '@/theme/ThemeProvider';
-import { useMotion } from '@/lib/hooks/use-motion';
-import { Body, Caption, Mono } from '@/components/ui/typography';
 import HabitDot from '@/components/ui/habit-dot';
 import StreakFlame from '@/components/ui/streak-flame';
+import { Body, Caption, Mono } from '@/components/ui/typography';
 import * as haptics from '@/lib/haptics';
+import { useMotion } from '@/lib/hooks/use-motion';
 import type { TodayHabit } from '@/lib/queries/today';
+import { useTheme } from '@/theme/ThemeProvider';
 
 export type HabitRowProps = {
   habit: TodayHabit;
@@ -105,26 +106,30 @@ export default function HabitRow({
 
   const rowStyle = useAnimatedStyle(() => ({
     transform: [{ scale: rowScale.value }],
-  }));
+  })) as AnimatedStyle<ViewStyle>;
 
   const tintStyle = useAnimatedStyle(() => ({
     opacity: tintOpacity.value,
-  }));
+  })) as AnimatedStyle<ViewStyle>;
 
   const glowStyle = useAnimatedStyle(() => ({
     opacity: glowOpacity.value,
-  }));
+  })) as AnimatedStyle<ViewStyle>;
 
   const checkFillStyle = useAnimatedStyle(() => ({
     opacity: checkVisible.value,
-  }));
+  })) as AnimatedStyle<ViewStyle>;
 
   const checkIconStyle = useAnimatedStyle(() => ({
     transform: [{ scale: interpolate(checkVisible.value, [0, 1], [0.6, 1]) }],
     opacity: checkVisible.value,
-  }));
+  })) as AnimatedStyle<ViewStyle>;
 
-  const dotState = habit.isComplete ? 'complete' : habit.completedCount > 0 ? 'partial' : 'empty';
+  const dotState = habit.isComplete
+    ? 'complete'
+    : habit.completedCount > 0
+    ? 'partial'
+    : 'empty';
 
   const a11yLabel = habit.isComplete
     ? `${habit.name}, completed`
@@ -134,7 +139,11 @@ export default function HabitRow({
     <Animated.View style={rowStyle}>
       {/* Glow layer */}
       <Animated.View
-        style={[StyleSheet.absoluteFill, { backgroundColor: colors['surface-2'] }, glowStyle]}
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: colors['surface-2'] },
+          glowStyle,
+        ]}
         pointerEvents="none"
       />
 
@@ -144,9 +153,10 @@ export default function HabitRow({
         delayLongPress={500}
         accessibilityRole="button"
         accessibilityLabel={a11yLabel}
-        accessibilityHint={habit.isComplete ? 'Long press to undo last check-in' : undefined}
-        style={styles.row}
-      >
+        accessibilityHint={
+          habit.isComplete ? 'Long press to undo last check-in' : undefined
+        }
+        style={styles.row}>
         {/* Habit-color tint flash overlay */}
         <Animated.View
           style={[StyleSheet.absoluteFill, { backgroundColor: habit.color }, tintStyle]}
@@ -168,14 +178,12 @@ export default function HabitRow({
           delayLongPress={400}
           accessibilityLabel={`Edit ${habit.name}`}
           accessibilityHint="Long press to edit this habit"
-          accessibilityRole="button"
-        >
+          accessibilityRole="button">
           <View>
             <Body
               color={habit.isComplete ? 'ink-mute' : 'ink'}
               style={styles.habitName}
-              numberOfLines={1}
-            >
+              numberOfLines={1}>
               {habit.name}
             </Body>
             {habit.isComplete && (
@@ -188,7 +196,9 @@ export default function HabitRow({
           {habit.currentStreak >= 2 ? (
             <StreakFlame count={habit.currentStreak} size="sm" />
           ) : habit.target > 1 ? (
-            <Caption color="ink-mute">{habit.completedCount} / {habit.target} today</Caption>
+            <Caption color="ink-mute">
+              {habit.completedCount} / {habit.target} today
+            </Caption>
           ) : null}
         </Pressable>
 
@@ -230,8 +240,8 @@ type CircularProgressProps = {
   color: string;
   isComplete: boolean;
   hairlineColor: string;
-  checkFillStyle: ReturnType<typeof useAnimatedStyle>;
-  checkIconStyle: ReturnType<typeof useAnimatedStyle>;
+  checkFillStyle: AnimatedStyle<ViewStyle>;
+  checkIconStyle: AnimatedStyle<ViewStyle>;
 };
 
 function CircularProgress({

@@ -16,15 +16,21 @@ import BottomSheet, { BottomSheetView } from '@/components/ui/bottom-sheet';
 import Button from '@/components/ui/button';
 import Card from '@/components/ui/card';
 import Input from '@/components/ui/input';
-import { Body, Caption, Title } from '@/components/ui/typography';
+import { Body, Caption, Display, Title } from '@/components/ui/typography';
+import {
+  APP_VERSION,
+  BUILD_NUMBER,
+  PRIVACY_URL,
+  SUPPORT_EMAIL,
+  TERMS_URL,
+} from '@/lib/about';
 import { deleteAccount } from '@/lib/auth/delete-account';
 import { cancelAllReminders } from '@/lib/notifications';
 import { useSyncStore } from '@/lib/stores/sync-store';
+import { useThemeStore } from '@/lib/stores/theme-store';
 import { syncNow } from '@/lib/sync/engine';
-import { PRIVACY_URL, TERMS_URL, SUPPORT_EMAIL, APP_VERSION, BUILD_NUMBER } from '@/lib/about';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTheme } from '@/theme/ThemeProvider';
-import { useThemeStore } from '@/lib/stores/theme-store';
 
 // ─── Row helpers ─────────────────────────────────────────────────────────────
 
@@ -52,7 +58,10 @@ function SectionRow({ label, right, onPress, destructive, last }: RowProps) {
       style={[
         styles.row,
         { paddingHorizontal: spacing[5], paddingVertical: spacing[4] },
-        !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.hairline },
+        !last && {
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: colors.hairline,
+        },
       ]}
       activeOpacity={onPress ? 0.6 : 1}>
       <Body style={{ color: labelColor, fontFamily: fontFamily.sans }}>{label}</Body>
@@ -131,7 +140,10 @@ export default function SettingsIndex() {
 
   // ── Sync inline label ───────────────────────────────────────────────────
   const syncLabel = lastSyncedAt
-    ? `${pendingCount > 0 ? `${pendingCount} pending · ` : ''}${formatDistanceToNow(lastSyncedAt, { addSuffix: true })}`
+    ? `${pendingCount > 0 ? `${pendingCount} pending · ` : ''}${formatDistanceToNow(
+        lastSyncedAt,
+        { addSuffix: true },
+      )}`
     : pendingCount > 0
     ? `${pendingCount} pending`
     : 'Never synced';
@@ -142,10 +154,14 @@ export default function SettingsIndex() {
     <SafeAreaView style={[styles.root, { backgroundColor: colors.bg }]} edges={['top']}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingHorizontal: spacing[4], paddingBottom: 48 }]}
+        contentContainerStyle={[
+          styles.content,
+          { paddingHorizontal: spacing[4], paddingBottom: 48 },
+        ]}
         showsVerticalScrollIndicator={false}>
-
-        <Title style={{ marginBottom: spacing[2] }}>Settings</Title>
+        <Display style={{ fontSize: 32, lineHeight: 40, marginBottom: spacing[2] }}>
+          Settings
+        </Display>
 
         {/* ── APPEARANCE ── */}
         <SectionHeader title="Appearance" />
@@ -171,6 +187,10 @@ export default function SettingsIndex() {
           <SectionRow
             label="Notifications"
             onPress={() => router.push('/settings/notifications')}
+          />
+          <SectionRow
+            label="Archived habits"
+            onPress={() => router.push('/settings/archived')}
             last
           />
         </Card>
@@ -254,7 +274,9 @@ export default function SettingsIndex() {
             label="Send feedback"
             onPress={() =>
               Linking.openURL(
-                `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Dawnwell feedback')}`,
+                `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
+                  'Dawnwell feedback',
+                )}`,
               )
             }
           />
@@ -305,9 +327,10 @@ export default function SettingsIndex() {
         snapPoints={['60%']}
         enablePanDownToClose={!deleting}>
         <BottomSheetView style={[styles.sheet, { paddingHorizontal: spacing[6] }]}>
-          <Title style={[styles.sheetTitle, { color: '#dc2626' }]}>Delete account?</Title>
+          <Title style={{ marginBottom: 8, color: '#dc2626' }}>Delete account?</Title>
           <Body color="ink-soft" style={styles.sheetBody}>
-            This permanently deletes your habits, check-ins, and account. This cannot be undone.
+            This permanently deletes your habits, check-ins, and account. This cannot be
+            undone.
           </Body>
 
           {deleting ? (
@@ -324,7 +347,9 @@ export default function SettingsIndex() {
                 autoCapitalize="none"
               />
               {deleteError && (
-                <Caption color="ink-mute" style={{ color: '#dc2626', marginTop: spacing[2] }}>
+                <Caption
+                  color="ink-mute"
+                  style={{ color: '#dc2626', marginTop: spacing[2] }}>
                   {deleteError}
                 </Caption>
               )}

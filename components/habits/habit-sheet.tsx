@@ -21,7 +21,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import * as Linking from 'expo-linking';
 import { Check, X } from 'lucide-react-native';
-import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 import { useController, useForm } from 'react-hook-form';
 import { Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import Animated, {
@@ -388,27 +395,27 @@ function ReminderSection({
   const { reduced: isReducedMotion } = useMotion();
   const [showPicker, setShowPicker] = useState(false);
 
-  const heightAnim = useSharedValue(0);
+  // Initialize from prop so edit mode shows time row immediately when reminder already set
+  const heightAnim = useSharedValue(enabled ? 56 : 0);
   const animStyle = useAnimatedStyle(() => ({
     height: heightAnim.value,
     overflow: 'hidden',
   }));
 
-  const handleToggle = (v: boolean) => {
-    onToggle(v);
-    heightAnim.value = withTiming(v ? 56 : 0, {
+  // Sync animation whenever enabled changes (covers form reset and sheet re-open)
+  useEffect(() => {
+    heightAnim.value = withTiming(enabled ? 56 : 0, {
       duration: isReducedMotion ? 0 : 220,
     });
-    if (!v) setShowPicker(false);
+    if (!enabled) setShowPicker(false);
+  }, [enabled, heightAnim, isReducedMotion]);
+
+  const handleToggle = (v: boolean) => {
+    onToggle(v);
   };
 
   const currentTime = reminderTime ?? '08:00';
   const pickerDate = formTimeToDate(currentTime);
-
-  const handlePickerChange = (_event: DateTimePickerChangeEvent, date: Date) => {
-    if (Platform.OS === 'android') setShowPicker(false);
-    onTimeChange(dateToFormTime(date));
-  };
 
   const handlePickerDismiss = () => setShowPicker(false);
 
@@ -447,7 +454,10 @@ function ReminderSection({
           value={pickerDate}
           mode="time"
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onValueChange={handlePickerChange}
+          onValueChange={(_event: DateTimePickerChangeEvent, date?: Date) => {
+            if (Platform.OS === 'android') setShowPicker(false);
+            if (date) onTimeChange(dateToFormTime(date));
+          }}
           onDismiss={handlePickerDismiss}
           accessibilityLabel="Select reminder time"
         />
@@ -544,6 +554,8 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(function HabitS
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState<'create' | 'edit'>('create');
   const [currentHabitId, setCurrentHabitId] = useState<string | null>(null);
+  // Increments each open so sub-components with a key= get a fresh mount
+  const sessionKey = useRef(0);
 
   // — Confirm UX state
   const [submitFailed, setSubmitFailed] = useState(false);
@@ -643,13 +655,15 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(function HabitS
   });
 
   // — Cleanup timers
-  const clearTimers = () => {
+  const clearTimers = useCallback(() => {
     if (discardStripTimer.current) clearTimeout(discardStripTimer.current);
     if (archiveTimer.current) clearTimeout(archiveTimer.current);
-  };
+  }, []);
+
+  useEffect(() => clearTimers, [clearTimers]);
 
   // — Sheet lifecycle
-  const resetSheetState = () => {
+  const resetSheetState = useCallback(() => {
     setSubmitFailed(false);
     setMutationError(null);
     setShowDiscardStrip(false);
@@ -658,14 +672,14 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(function HabitS
     setArchiveLabel('Archive habit');
     archivePending.current = false;
     clearTimers();
-  };
+  }, [clearTimers]);
 
-  const closeSheet = () => {
+  const closeSheet = useCallback(() => {
     resetSheetState();
     pendingHabitRef.current = null;
     setIsOpen(false);
     onClose?.();
-  };
+  }, [resetSheetState, onClose]);
 
   // ─── Notification helpers ────────────────────────────────────────────────
 
@@ -710,6 +724,7 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(function HabitS
       const cachedRituals = queryClient.getQueryData<Ritual[]>(queryKeys.rituals()) ?? [];
       const ritualId = defaultRitualId ?? cachedRituals[0]?.id ?? '';
       reset(getDefaultFormValues(ritualId));
+      sessionKey.current += 1;
       setIsOpen(true);
     },
     openEdit: (habitId: string) => {
@@ -719,6 +734,7 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(function HabitS
         setMode('edit');
         setCurrentHabitId(habitId);
         reset(mapHabitToFormValues(row));
+        sessionKey.current += 1;
         setIsOpen(true);
       });
     },
@@ -729,7 +745,6 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(function HabitS
   const handleCancel = useCallback(() => {
     if (mode === 'edit' && isDirty) {
       if (showDiscardStrip) {
-        // second tap → discard
         closeSheet();
       } else {
         setShowDiscardStrip(true);
@@ -740,32 +755,27 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(function HabitS
     } else {
       closeSheet();
     }
-  }, [mode, isDirty, showDiscardStrip]);
+  }, [mode, isDirty, showDiscardStrip, closeSheet]);
 
-  // When gorhom drag-down closes the sheet, reconcile state
   const handleSheetClose = useCallback(() => {
-    // Only allow silent dismiss if form is clean (or create mode)
-    if (mode === 'create' || !isDirty) {
-      closeSheet();
-    }
-    // If dirty edit — enablePanDownToClose is false so this won't fire from drag.
-    // It CAN fire from our own setIsOpen(false), which is intentional.
-  }, [mode, isDirty]);
+    if (mode === 'create' || !isDirty) closeSheet();
+  }, [mode, isDirty, closeSheet]);
 
-  // — Save
-  const handleSave = handleSubmit(
-    async (values) => {
-      setMutationError(null);
-      if (mode === 'create') {
-        createMutation.mutate(values);
-      } else if (currentHabitId) {
-        updateMutation.mutate({ id: currentHabitId, values });
-      }
-    },
-    () => {
-      setSubmitFailed(true);
-    },
-  );
+  // — Save (stable reference so renderFooter doesn't recreate on every render)
+  const handleSave = useCallback(() => {
+    setSubmitFailed(false);
+    void handleSubmit(
+      (values) => {
+        setMutationError(null);
+        if (mode === 'create') {
+          createMutation.mutate(values);
+        } else if (currentHabitId) {
+          updateMutation.mutate({ id: currentHabitId, values });
+        }
+      },
+      () => setSubmitFailed(true),
+    )();
+  }, [handleSubmit, mode, currentHabitId, createMutation, updateMutation]);
 
   // — Archive (double-tap confirm)
   const handleArchive = useCallback(() => {
@@ -857,7 +867,7 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(function HabitS
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={[
               styles.scrollContent,
-              { paddingHorizontal: spacing[4], paddingBottom: 88 + insets.bottom },
+              { paddingHorizontal: spacing[4], paddingBottom: 290 + insets.bottom },
             ]}
             showsVerticalScrollIndicator={false}>
             {/* Mutation error strip */}
@@ -971,6 +981,7 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(function HabitS
             <View style={styles.section}>
               <SectionLabel>Reminder</SectionLabel>
               <ReminderSection
+                key={sessionKey.current}
                 enabled={watchedReminderEnabled}
                 onToggle={(v) => {
                   reminderEnabledField.onChange(v);

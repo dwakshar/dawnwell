@@ -9,8 +9,8 @@
  * Having this screen is a soft requirement for Play Store and App Store submission.
  */
 
-import { useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
+import { useRouter } from 'expo-router';
 import { ArrowLeft, ExternalLink } from 'lucide-react-native';
 import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -47,23 +47,31 @@ export default function AcknowledgementsScreen() {
         <Title>Acknowledgements</Title>
       </View>
 
+      <Caption
+        color="ink-mute"
+        style={{
+          lineHeight: 17,
+          marginHorizontal: spacing[5],
+          marginBottom: spacing[3],
+        }}>
+        Dawnwell is built on the shoulders of these open-source libraries. Thank you to
+        all contributors.
+      </Caption>
+
       <FlatList
         data={LICENSES}
         keyExtractor={(item) => item.name}
-        contentContainerStyle={[styles.list, { paddingHorizontal: spacing[4], paddingBottom: 48 }]}
+        contentContainerStyle={{ paddingBottom: 48 }}
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          <Caption color="ink-mute" style={styles.intro}>
-            Dawnwell is built on the shoulders of these open-source libraries. Thank you to all
-            contributors.
-          </Caption>
-        }
         ItemSeparatorComponent={() => (
           <View style={[styles.separator, { backgroundColor: colors.hairline }]} />
         )}
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={[styles.row, { paddingVertical: spacing[4], paddingHorizontal: spacing[5] }]}
+            style={[
+              styles.row,
+              { paddingVertical: spacing[4], paddingHorizontal: spacing[5] },
+            ]}
             onPress={item.url ? () => Linking.openURL(item.url!) : undefined}
             disabled={!item.url}
             activeOpacity={item.url ? 0.6 : 1}
@@ -78,7 +86,14 @@ export default function AcknowledgementsScreen() {
             {item.url && <ExternalLink size={14} color={colors['ink-mute']} />}
           </TouchableOpacity>
         )}
-        style={[styles.listContainer, { backgroundColor: colors.surface, borderRadius: 14 }]}
+        style={[
+          styles.listContainer,
+          {
+            backgroundColor: colors.surface,
+            borderRadius: 14,
+            marginHorizontal: spacing[4],
+          },
+        ]}
       />
     </SafeAreaView>
   );
@@ -93,8 +108,6 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     paddingBottom: 12,
   },
-  list: { gap: 0 },
-  intro: { marginBottom: 16 },
   listContainer: { overflow: 'hidden' },
   row: {
     flexDirection: 'row',

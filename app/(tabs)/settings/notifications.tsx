@@ -1,10 +1,10 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Bell, BellOff, RefreshCw } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import Button from '@/components/ui/button';
 import Card from '@/components/ui/card';
@@ -45,7 +45,9 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const qc = useQueryClient();
 
-  const [permission, setPermission] = useState<'granted' | 'denied' | 'undetermined' | null>(null);
+  const [permission, setPermission] = useState<
+    'granted' | 'denied' | 'undetermined' | null
+  >(null);
   const { enabled: masterEnabled, toggle: toggleMaster } = useMasterEnabled();
   const [rescheduling, setRescheduling] = useState(false);
 
@@ -101,7 +103,6 @@ export default function NotificationsScreen() {
         style={styles.scroll}
         contentContainerStyle={[styles.content, { paddingHorizontal: spacing[4] }]}
         showsVerticalScrollIndicator={false}>
-
         {/* Permission denied state */}
         {permission === 'denied' && (
           <Card variant="flat" style={styles.deniedCard}>
@@ -110,7 +111,8 @@ export default function NotificationsScreen() {
               <View style={{ flex: 1, gap: 4 }}>
                 <Body>Notifications are disabled</Body>
                 <Caption color="ink-mute">
-                  Enable notifications in System Settings so Dawnwell can remind you of your habits.
+                  Enable notifications in System Settings so Dawnwell can remind you of
+                  your habits.
                 </Caption>
               </View>
             </View>
@@ -150,7 +152,7 @@ export default function NotificationsScreen() {
               <>
                 <Caption
                   color="ink-mute"
-                  style={[styles.sectionLabel, { marginHorizontal: spacing[2] }]}>
+                  style={{ ...styles.sectionLabel, marginHorizontal: spacing[2] }}>
                   Habits with reminders
                 </Caption>
                 <Card variant="flat" style={styles.habitListCard}>
@@ -188,7 +190,8 @@ export default function NotificationsScreen() {
                 <View style={styles.emptyRow}>
                   <Bell size={20} color={colors['ink-mute']} />
                   <Caption color="ink-mute">
-                    No habits have reminder times set. Add a reminder time when creating or editing a habit.
+                    No habits have reminder times set. Add a reminder time when creating
+                    or editing a habit.
                   </Caption>
                 </View>
               </Card>
