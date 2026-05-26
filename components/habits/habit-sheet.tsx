@@ -214,6 +214,13 @@ type SheetSaveBarProps = BottomSheetFooterProps & {
   onSave: () => void;
   saving: boolean;
   valid: boolean;
+  onArchive?: () => void;
+  archiveLabel?: string;
+  onDeletePress?: () => void;
+  showDeleteConfirm?: boolean;
+  onDeleteCancel?: () => void;
+  onDeleteConfirm?: () => void;
+  deleting?: boolean;
 };
 
 function SheetSaveBar({
@@ -222,8 +229,15 @@ function SheetSaveBar({
   onSave,
   saving,
   valid,
+  onArchive,
+  archiveLabel = 'Archive habit',
+  onDeletePress,
+  showDeleteConfirm,
+  onDeleteCancel,
+  onDeleteConfirm,
+  deleting,
 }: SheetSaveBarProps) {
-  const { colors, spacing } = useTheme();
+  const { colors, radii, spacing } = useTheme();
 
   return (
     <BottomSheetFooter animatedFooterPosition={animatedFooterPosition}>
@@ -243,6 +257,58 @@ function SheetSaveBar({
           accessibilityLabel={mode === 'create' ? 'Save habit' : 'Done editing habit'}>
           {mode === 'create' ? 'Save habit' : 'Done'}
         </Button>
+
+        {mode === 'edit' && (
+          <>
+            <View style={{ marginTop: 10 }}>
+              <Button
+                variant="secondary"
+                size="md"
+                fullWidth
+                onPress={onArchive}
+                accessibilityLabel={archiveLabel}>
+                {archiveLabel}
+              </Button>
+            </View>
+
+            <Pressable
+              onPress={onDeletePress}
+              accessibilityLabel="Delete habit permanently"
+              accessibilityRole="button"
+              style={styles.deleteLink}>
+              <Caption color="ink-mute">Delete permanently</Caption>
+            </Pressable>
+
+            {showDeleteConfirm && (
+              <View
+                style={[
+                  styles.deleteConfirm,
+                  { backgroundColor: colors['surface-2'], borderRadius: radii.card },
+                ]}>
+                <Body color="ink-soft" style={styles.deleteConfirmText}>
+                  This removes the habit and all its check-ins. This cannot be undone.
+                </Body>
+                <View style={styles.deleteConfirmButtons}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onPress={onDeleteCancel}
+                    accessibilityLabel="Cancel deletion">
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onPress={onDeleteConfirm}
+                    loading={deleting}
+                    accessibilityLabel="Delete habit forever">
+                    Delete forever
+                  </Button>
+                </View>
+              </View>
+            )}
+          </>
+        )}
       </View>
     </BottomSheetFooter>
   );
@@ -461,80 +527,6 @@ function ReminderSection({
           onDismiss={handlePickerDismiss}
           accessibilityLabel="Select reminder time"
         />
-      )}
-    </View>
-  );
-}
-
-// ─── Edit footer ───────────────────────────────────────────────────────────
-
-type EditFooterProps = {
-  onArchive: () => void;
-  archiveLabel: string;
-  onDeletePress: () => void;
-  showDeleteConfirm: boolean;
-  onDeleteCancel: () => void;
-  onDeleteConfirm: () => void;
-  deleting: boolean;
-};
-
-function EditFooter({
-  onArchive,
-  archiveLabel,
-  onDeletePress,
-  showDeleteConfirm,
-  onDeleteCancel,
-  onDeleteConfirm,
-  deleting,
-}: EditFooterProps) {
-  const { colors, radii } = useTheme();
-
-  return (
-    <View style={styles.footer}>
-      <Button
-        variant="secondary"
-        size="md"
-        fullWidth
-        onPress={onArchive}
-        accessibilityLabel={archiveLabel}>
-        {archiveLabel}
-      </Button>
-
-      <Pressable
-        onPress={onDeletePress}
-        accessibilityLabel="Delete habit permanently"
-        accessibilityRole="button"
-        style={styles.deleteLink}>
-        <Caption color="ink-mute">Delete permanently</Caption>
-      </Pressable>
-
-      {showDeleteConfirm && (
-        <View
-          style={[
-            styles.deleteConfirm,
-            { backgroundColor: colors['surface-2'], borderRadius: radii.card },
-          ]}>
-          <Body color="ink-soft" style={styles.deleteConfirmText}>
-            This removes the habit and all its check-ins. This cannot be undone.
-          </Body>
-          <View style={styles.deleteConfirmButtons}>
-            <Button
-              variant="secondary"
-              size="sm"
-              onPress={onDeleteCancel}
-              accessibilityLabel="Cancel deletion">
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onPress={onDeleteConfirm}
-              loading={deleting}
-              accessibilityLabel="Delete habit forever">
-              Delete forever
-            </Button>
-          </View>
-        </View>
       )}
     </View>
   );
@@ -818,9 +810,29 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(function HabitS
         onSave={handleSave}
         saving={isSaving}
         valid={isValid}
+        onArchive={handleArchive}
+        archiveLabel={archiveLabel}
+        onDeletePress={() => {
+          haptics.warning();
+          setShowDeleteConfirm((v) => !v);
+        }}
+        showDeleteConfirm={showDeleteConfirm}
+        onDeleteCancel={() => setShowDeleteConfirm(false)}
+        onDeleteConfirm={handleDeleteConfirm}
+        deleting={deleteMutation.isPending}
       />
     ),
-    [mode, handleSave, isSaving, isValid],
+    [
+      mode,
+      handleSave,
+      isSaving,
+      isValid,
+      handleArchive,
+      archiveLabel,
+      showDeleteConfirm,
+      handleDeleteConfirm,
+      deleteMutation.isPending,
+    ],
   );
 
   // Block drag-to-dismiss when editing with unsaved changes
@@ -867,7 +879,7 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(function HabitS
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={[
               styles.scrollContent,
-              { paddingHorizontal: spacing[4], paddingBottom: 400 },
+              { paddingHorizontal: spacing[4], paddingBottom: 120 + insets.bottom },
             ]}
             showsVerticalScrollIndicator={false}>
             {/* Mutation error strip */}
@@ -993,25 +1005,6 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(function HabitS
                 onTimeChange={reminderTimeField.onChange}
               />
             </View>
-
-            {/* Section 7 — Edit actions */}
-            {mode === 'edit' && (
-              <>
-                <SectionDivider />
-                <EditFooter
-                  onArchive={handleArchive}
-                  archiveLabel={archiveLabel}
-                  onDeletePress={() => {
-                    haptics.warning();
-                    setShowDeleteConfirm((v) => !v);
-                  }}
-                  showDeleteConfirm={showDeleteConfirm}
-                  onDeleteCancel={() => setShowDeleteConfirm(false)}
-                  onDeleteConfirm={handleDeleteConfirm}
-                  deleting={deleteMutation.isPending}
-                />
-              </>
-            )}
           </BottomSheetScrollView>
         </View>
       </BottomSheet>
