@@ -395,7 +395,7 @@ function CompletionBarChart({
   inkMuteColor,
   isReducedMotion,
 }: BarChartInnerProps) {
-  const barWidth = range === 'week' ? 22 : 6;
+  const barWidth = range === 'week' ? 22 : 7;
   const n = series.length;
   const initialSpacing = 10;
   const spacing =
@@ -406,39 +406,49 @@ function CompletionBarChart({
             (chartWidth - barWidth * n - initialSpacing * 2) / Math.max(n - 1, 1),
           ),
         )
-      : 3;
+      : 4;
 
-  const data = series.map((s) => ({
-    value: s.pct,
-    label: s.label,
-    frontColor: accentColor,
-    topLabelComponent: () => (
-      <View style={{ alignItems: 'center', marginBottom: 2, minHeight: 18 }}>
-        {s.pct > 0 && (
-          <Text
-            style={{
-              fontSize: 9,
-              color: inkMuteColor,
-              fontFamily: 'Inter_400Regular',
-              lineHeight: 11,
-            }}>
-            {`${s.pct}%`}
-          </Text>
-        )}
-        {s.isToday && (
-          <View
-            style={{
-              width: 4,
-              height: 4,
-              borderRadius: 2,
-              backgroundColor: accentColor,
-              marginTop: 2,
-            }}
-          />
-        )}
-      </View>
-    ),
-  }));
+  // For month: calculate explicit content width so gifted-charts renders correctly
+  // inside a horizontal ScrollView (passing undefined breaks layout).
+  const monthContentWidth = n * barWidth + (n - 1) * spacing + initialSpacing * 2;
+  const effectiveWidth = range === 'week' ? chartWidth : Math.max(monthContentWidth, chartWidth);
+
+  const data = series.map((s, idx) => {
+    // For month, only label every 5th day (1, 5, 10, 15, 20, 25, 30) to avoid crowding.
+    const label =
+      range === 'month' ? (idx === 0 || (idx + 1) % 5 === 0 ? s.label : '') : s.label;
+    return {
+      value: s.pct,
+      label,
+      frontColor: accentColor,
+      topLabelComponent: () => (
+        <View style={{ alignItems: 'center', marginBottom: 2, minHeight: 18 }}>
+          {s.pct > 0 && (
+            <Text
+              style={{
+                fontSize: 9,
+                color: inkMuteColor,
+                fontFamily: 'Inter_400Regular',
+                lineHeight: 11,
+              }}>
+              {`${s.pct}%`}
+            </Text>
+          )}
+          {s.isToday && (
+            <View
+              style={{
+                width: 4,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: accentColor,
+                marginTop: 2,
+              }}
+            />
+          )}
+        </View>
+      ),
+    };
+  });
 
   return (
     <ScrollView
@@ -447,7 +457,7 @@ function CompletionBarChart({
       scrollEnabled={range === 'month'}>
       <BarChart
         data={data}
-        width={range === 'week' ? chartWidth : undefined}
+        width={effectiveWidth}
         height={120}
         barWidth={barWidth}
         spacing={spacing}
@@ -460,7 +470,7 @@ function CompletionBarChart({
         yAxisThickness={0}
         xAxisThickness={0}
         xAxisLabelTextStyle={{
-          fontSize: range === 'week' ? 10 : 8,
+          fontSize: range === 'week' ? 10 : 9,
           color: inkMuteColor,
           fontFamily: 'Inter_400Regular',
         }}
@@ -549,7 +559,11 @@ function ScorecardItem({ scorecard, range }: ScorecardItemProps) {
     range === 'week' ? 'this week' : range === 'month' ? 'this month' : 'all time'
   }, ${scorecard.currentStreakDays} day streak. Open in history.`;
 
-  const cellSize = range === 'alltime' ? 10 : 8;
+  // week: 7 cells × 8px + 6 × 2gap = 68px
+  // month: 30 cells × 4px + 29 × 1gap = 149px
+  // alltime: 12 cells × 10px + 11 × 2gap = 142px
+  const cellSize = range === 'alltime' ? 10 : range === 'month' ? 4 : 8;
+  const cellGap = range === 'month' ? 1 : 2;
 
   return (
     <Card
@@ -571,7 +585,7 @@ function ScorecardItem({ scorecard, range }: ScorecardItemProps) {
         </View>
 
         {/* Middle: mini heatmap */}
-        <View style={[styles.scorecardHeatmap, { gap: 2 }]}>
+        <View style={[styles.scorecardHeatmap, { gap: cellGap }]}>
           {scorecard.cells.map((cell) => {
             const completed = cell.hasData
               ? Math.round(cell.pct * scorecard.targetPerDay)
@@ -589,7 +603,7 @@ function ScorecardItem({ scorecard, range }: ScorecardItemProps) {
               <View
                 key={cell.key}
                 style={[
-                  { width: cellSize, height: cellSize, borderRadius: 2 },
+                  { width: cellSize, height: cellSize, borderRadius: Math.max(1, cellSize / 4) },
                   { backgroundColor: info.bgColor },
                 ]}
               />
