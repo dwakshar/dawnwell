@@ -867,7 +867,7 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(function HabitS
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={[
               styles.scrollContent,
-              { paddingHorizontal: spacing[4], paddingBottom: 290 + insets.bottom },
+              { paddingHorizontal: spacing[4], paddingBottom: 400 },
             ]}
             showsVerticalScrollIndicator={false}>
             {/* Mutation error strip */}

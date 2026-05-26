@@ -1,4 +1,4 @@
-import { eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { format } from 'date-fns';
 
 import { db } from '@/db/client';
@@ -54,7 +54,7 @@ export async function getTodayView(date: Date): Promise<TodayView> {
     })
     .from(habits)
     .innerJoin(rituals, eq(habits.ritualId, rituals.id))
-    .where(isNull(habits.archivedAt))
+    .where(and(isNull(habits.archivedAt), isNull(habits.deletedAt)))
     .orderBy(rituals.orderIndex, habits.orderIndex)
     .all();
 
