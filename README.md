@@ -315,13 +315,13 @@ assets/         Images, fonts, and static resources
 
 **v1.0 — shipped** <!-- TODO: SHIP_DATE -->
 
-- [ ] **v1.1** — Realtime sync subscriptions (Supabase `LISTEN/NOTIFY` via websocket)
-- [ ] **v1.1** — Full account deletion via Edge Function
-- [ ] **v1.1** — iOS WidgetKit + Android App Widgets (today's ritual at a glance)
-- [ ] **v1.2** — Apple Watch / Wear OS companion
-- [ ] **v1.x** — Data import (JSON re-hydration from export)
-- [ ] **v1.x** — Conflict UI: surface rule-(e) conflicts with keep-mine / keep-theirs prompt
-- [ ] **deferred** — Premium tier (deferred until user count justifies the infrastructure)
+- **v1.1** — Realtime sync subscriptions (Supabase `LISTEN/NOTIFY` via websocket)
+- **v1.1** — Full account deletion via Edge Function
+- **v1.1** — iOS WidgetKit + Android App Widgets (today's ritual at a glance)
+- **v1.2** — Apple Watch / Wear OS companion
+- **v1.x** — Data import (JSON re-hydration from export)
+- **v1.x** — Conflict UI: surface rule-(e) conflicts with keep-mine / keep-theirs prompt
+- **deferred** — Premium tier (deferred until user count justifies the infrastructure)
 
 ---
 
