@@ -362,6 +362,7 @@ function ChartCard({ series, range, screenWidth }: ChartCardProps) {
             />
           ) : (
             <CompletionBarChart
+              key={range}
               series={series}
               range={range}
               chartWidth={chartWidth}
@@ -395,58 +396,66 @@ function CompletionBarChart({
   inkMuteColor,
   isReducedMotion,
 }: BarChartInnerProps) {
-  const barWidth = range === 'week' ? 22 : 7;
+  const barWidth = range === 'week' ? 28 : 7;
   const n = series.length;
-  const initialSpacing = 10;
+  const initialSpacing = 12;
   const spacing =
     range === 'week'
       ? Math.max(
-          4,
+          6,
           Math.floor(
             (chartWidth - barWidth * n - initialSpacing * 2) / Math.max(n - 1, 1),
           ),
         )
       : 4;
 
-  // For month: calculate explicit content width so gifted-charts renders correctly
-  // inside a horizontal ScrollView (passing undefined breaks layout).
   const monthContentWidth = n * barWidth + (n - 1) * spacing + initialSpacing * 2;
   const effectiveWidth = range === 'week' ? chartWidth : Math.max(monthContentWidth, chartWidth);
 
+  const filled = series.filter((s) => s.pct > 0);
+  const avg =
+    filled.length > 0
+      ? Math.round(filled.reduce((a, b) => a + b.pct, 0) / filled.length)
+      : 0;
+
   const data = series.map((s, idx) => {
-    // For month, only label every 5th day (1, 5, 10, 15, 20, 25, 30) to avoid crowding.
     const label =
       range === 'month' ? (idx === 0 || (idx + 1) % 5 === 0 ? s.label : '') : s.label;
     return {
       value: s.pct,
       label,
-      frontColor: accentColor,
-      topLabelComponent: () => (
-        <View style={{ alignItems: 'center', marginBottom: 2, minHeight: 18 }}>
-          {s.pct > 0 && (
-            <Text
-              style={{
-                fontSize: 9,
-                color: inkMuteColor,
-                fontFamily: 'Inter_400Regular',
-                lineHeight: 11,
-              }}>
-              {`${s.pct}%`}
-            </Text>
-          )}
-          {s.isToday && (
-            <View
-              style={{
-                width: 4,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: accentColor,
-                marginTop: 2,
-              }}
-            />
-          )}
-        </View>
-      ),
+      frontColor: s.isToday ? accentColor : accentColor + 'B3',
+      gradientColor: s.isToday ? accentColor + '33' : accentColor + '15',
+      showGradient: true,
+      topLabelComponent:
+        range === 'week'
+          ? () => (
+              <View style={{ alignItems: 'center', marginBottom: 2, minHeight: 20 }}>
+                {s.pct > 0 && (
+                  <Text
+                    style={{
+                      fontSize: 9,
+                      color: s.isToday ? accentColor : inkMuteColor,
+                      fontFamily: 'Inter_500Medium',
+                      lineHeight: 11,
+                    }}>
+                    {`${s.pct}%`}
+                  </Text>
+                )}
+                {s.isToday && (
+                  <View
+                    style={{
+                      width: 4,
+                      height: 4,
+                      borderRadius: 2,
+                      backgroundColor: accentColor,
+                      marginTop: 2,
+                    }}
+                  />
+                )}
+              </View>
+            )
+          : undefined,
     };
   });
 
@@ -458,7 +467,7 @@ function CompletionBarChart({
       <BarChart
         data={data}
         width={effectiveWidth}
-        height={120}
+        height={150}
         barWidth={barWidth}
         spacing={spacing}
         initialSpacing={initialSpacing}
@@ -470,14 +479,22 @@ function CompletionBarChart({
         yAxisThickness={0}
         xAxisThickness={0}
         xAxisLabelTextStyle={{
-          fontSize: range === 'week' ? 10 : 9,
+          fontSize: range === 'week' ? 11 : 9,
           color: inkMuteColor,
           fontFamily: 'Inter_400Regular',
         }}
-        topLabelContainerStyle={{ height: 22 }}
+        topLabelContainerStyle={{ height: range === 'week' ? 22 : 4 }}
         isAnimated={!isReducedMotion}
-        animationDuration={600}
-        barBorderRadius={3}
+        animationDuration={500}
+        barBorderRadius={range === 'week' ? 8 : 4}
+        showReferenceLine1={avg > 0 && filled.length > 1}
+        referenceLine1Position={avg}
+        referenceLine1Config={{
+          color: inkMuteColor + '70',
+          dashWidth: 4,
+          dashGap: 3,
+          thickness: 1,
+        }}
       />
     </ScrollView>
   );
@@ -508,9 +525,9 @@ function AllTimeLineChart({
   const data = series.map((s, idx) => ({
     value: s.pct,
     label: idx % 4 === 0 ? s.label : '',
-    hideDataPoint: !s.isToday,
-    dataPointColor: accentColor,
-    dataPointRadius: 4,
+    hideDataPoint: false,
+    dataPointColor: s.isToday ? accentColor : accentColor + '80',
+    dataPointRadius: s.isToday ? 5 : 3,
     labelTextStyle: {
       fontSize: 9,
       color: inkMuteColor,
@@ -522,17 +539,23 @@ function AllTimeLineChart({
     <LineChart
       data={data}
       width={chartWidth}
-      height={120}
+      height={150}
       spacing={spacing}
       initialSpacing={10}
       endSpacing={10}
       color={accentColor}
-      thickness={2}
+      thickness={2.5}
       maxValue={100}
       hideRules
       hideYAxisText
       yAxisThickness={0}
       xAxisThickness={0}
+      areaChart
+      startFillColor={accentColor}
+      endFillColor={accentColor}
+      startOpacity={0.18}
+      endOpacity={0}
+      curved
       dataPointsRadius={0}
       dataPointsColor="transparent"
       isAnimated={!isReducedMotion}

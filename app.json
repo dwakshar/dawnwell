@@ -19,15 +19,15 @@
     "android": {
       "package": "app.dwakshar.dawnwell",
       "adaptiveIcon": {
-        "backgroundColor": "#f5f7fa",
-        "foregroundImage": "./assets/images/android-icon-foreground.png"
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "monochromeImage": "./assets/images/adaptive-icon-monochrome.png",
+        "backgroundColor": "#3b82f6"
       },
       "edgeToEdgeEnabled": true
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "output": "static"
     },
     "plugins": [
       "expo-router",
@@ -38,7 +38,7 @@
         {
           "image": "./assets/images/splash-icon.png",
           "resizeMode": "contain",
-          "backgroundColor": "#f5f7fa"
+          "backgroundColor": "#3b82f6"
         }
       ],
       "@react-native-community/datetimepicker"
