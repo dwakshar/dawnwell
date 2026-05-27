@@ -4,10 +4,7 @@ export default ({ config }: ConfigContext) => ({
   ...config,
   name: config.name ?? 'Dawnwell',
   slug: config.slug ?? 'dawnwell',
-  plugins: [
-    ...(config.plugins ?? []),
-    'expo-sharing',
-  ],
+  plugins: [...(config.plugins ?? []), 'expo-sharing'],
   extra: {
     ...config.extra,
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
