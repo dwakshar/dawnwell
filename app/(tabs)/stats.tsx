@@ -316,6 +316,7 @@ function ChartCard({ series, range, screenWidth }: ChartCardProps) {
   const { reduced: isReducedMotion } = useMotion();
   const chartWidth = screenWidth - H_PAD * 2 - CARD_PAD * 2;
   const allZero = series.every((s) => s.pct === 0);
+  const hairlineColor = colors.hairline;
 
   const cardTitle =
     range === 'week'
@@ -368,6 +369,7 @@ function ChartCard({ series, range, screenWidth }: ChartCardProps) {
               chartWidth={chartWidth}
               accentColor={colors.accent}
               inkMuteColor={colors['ink-mute']}
+              hairlineColor={hairlineColor}
               isReducedMotion={isReducedMotion ?? false}
             />
           )}
@@ -385,6 +387,7 @@ type BarChartInnerProps = {
   chartWidth: number;
   accentColor: string;
   inkMuteColor: string;
+  hairlineColor: string;
   isReducedMotion: boolean;
 };
 
@@ -394,9 +397,10 @@ function CompletionBarChart({
   chartWidth,
   accentColor,
   inkMuteColor,
+  hairlineColor,
   isReducedMotion,
 }: BarChartInnerProps) {
-  const barWidth = range === 'week' ? 28 : 7;
+  const barWidth = range === 'week' ? 28 : 8;
   const n = series.length;
   const initialSpacing = 12;
   const spacing =
@@ -407,55 +411,49 @@ function CompletionBarChart({
             (chartWidth - barWidth * n - initialSpacing * 2) / Math.max(n - 1, 1),
           ),
         )
-      : 4;
+      : 5;
 
   const monthContentWidth = n * barWidth + (n - 1) * spacing + initialSpacing * 2;
   const effectiveWidth = range === 'week' ? chartWidth : Math.max(monthContentWidth, chartWidth);
 
-  const filled = series.filter((s) => s.pct > 0);
-  const avg =
-    filled.length > 0
-      ? Math.round(filled.reduce((a, b) => a + b.pct, 0) / filled.length)
-      : 0;
-
   const data = series.map((s, idx) => {
     const label =
       range === 'month' ? (idx === 0 || (idx + 1) % 5 === 0 ? s.label : '') : s.label;
+    const isEmpty = s.pct === 0;
     return {
-      value: s.pct,
+      value: isEmpty ? 2 : s.pct,
       label,
-      frontColor: s.isToday ? accentColor : accentColor + 'B3',
-      gradientColor: s.isToday ? accentColor + '33' : accentColor + '15',
-      showGradient: true,
-      topLabelComponent:
-        range === 'week'
-          ? () => (
-              <View style={{ alignItems: 'center', marginBottom: 2, minHeight: 20 }}>
-                {s.pct > 0 && (
-                  <Text
-                    style={{
-                      fontSize: 9,
-                      color: s.isToday ? accentColor : inkMuteColor,
-                      fontFamily: 'Inter_500Medium',
-                      lineHeight: 11,
-                    }}>
-                    {`${s.pct}%`}
-                  </Text>
-                )}
-                {s.isToday && (
-                  <View
-                    style={{
-                      width: 4,
-                      height: 4,
-                      borderRadius: 2,
-                      backgroundColor: accentColor,
-                      marginTop: 2,
-                    }}
-                  />
-                )}
-              </View>
-            )
-          : undefined,
+      frontColor: isEmpty ? hairlineColor : accentColor,
+      barBorderTopLeftRadius: isEmpty ? 1 : 6,
+      barBorderTopRightRadius: isEmpty ? 1 : 6,
+      barBorderBottomLeftRadius: 0,
+      barBorderBottomRightRadius: 0,
+      topLabelComponent: () => (
+        <View style={{ alignItems: 'center', marginBottom: 2, minHeight: 20 }}>
+          {!isEmpty && (
+            <Text
+              style={{
+                fontSize: range === 'week' ? 10 : 9,
+                color: inkMuteColor,
+                fontFamily: 'Inter_400Regular',
+                lineHeight: 12,
+              }}>
+              {`${s.pct}%`}
+            </Text>
+          )}
+          {s.isToday && (
+            <View
+              style={{
+                width: 4,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: accentColor,
+                marginTop: isEmpty ? 0 : 2,
+              }}
+            />
+          )}
+        </View>
+      ),
     };
   });
 
@@ -467,7 +465,7 @@ function CompletionBarChart({
       <BarChart
         data={data}
         width={effectiveWidth}
-        height={150}
+        height={148}
         barWidth={barWidth}
         spacing={spacing}
         initialSpacing={initialSpacing}
@@ -477,24 +475,16 @@ function CompletionBarChart({
         hideRules
         hideYAxisText
         yAxisThickness={0}
-        xAxisThickness={0}
+        xAxisThickness={StyleSheet.hairlineWidth}
+        xAxisColor={hairlineColor}
         xAxisLabelTextStyle={{
           fontSize: range === 'week' ? 11 : 9,
           color: inkMuteColor,
           fontFamily: 'Inter_400Regular',
         }}
-        topLabelContainerStyle={{ height: range === 'week' ? 22 : 4 }}
+        topLabelContainerStyle={{ height: 24 }}
         isAnimated={!isReducedMotion}
         animationDuration={500}
-        barBorderRadius={range === 'week' ? 8 : 4}
-        showReferenceLine1={avg > 0 && filled.length > 1}
-        referenceLine1Position={avg}
-        referenceLine1Config={{
-          color: inkMuteColor + '70',
-          dashWidth: 4,
-          dashGap: 3,
-          thickness: 1,
-        }}
       />
     </ScrollView>
   );
@@ -525,9 +515,9 @@ function AllTimeLineChart({
   const data = series.map((s, idx) => ({
     value: s.pct,
     label: idx % 4 === 0 ? s.label : '',
-    hideDataPoint: false,
-    dataPointColor: s.isToday ? accentColor : accentColor + '80',
     dataPointRadius: s.isToday ? 5 : 3,
+    dataPointColor: accentColor,
+    hideDataPoint: false,
     labelTextStyle: {
       fontSize: 9,
       color: inkMuteColor,
@@ -539,7 +529,7 @@ function AllTimeLineChart({
     <LineChart
       data={data}
       width={chartWidth}
-      height={150}
+      height={148}
       spacing={spacing}
       initialSpacing={10}
       endSpacing={10}
@@ -549,17 +539,12 @@ function AllTimeLineChart({
       hideRules
       hideYAxisText
       yAxisThickness={0}
-      xAxisThickness={0}
-      areaChart
-      startFillColor={accentColor}
-      endFillColor={accentColor}
-      startOpacity={0.18}
-      endOpacity={0}
-      curved
-      dataPointsRadius={0}
-      dataPointsColor="transparent"
+      xAxisThickness={StyleSheet.hairlineWidth}
+      xAxisColor={inkMuteColor}
+      dataPointsRadius={3}
+      dataPointsColor={accentColor}
       isAnimated={!isReducedMotion}
-      animationDuration={isReducedMotion ? 0 : 600}
+      animationDuration={isReducedMotion ? 0 : 500}
     />
   );
 }
