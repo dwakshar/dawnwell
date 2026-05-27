@@ -75,6 +75,7 @@ import {
 import { getRituals } from '@/lib/queries/rituals';
 import { queryKeys } from '@/lib/query-keys';
 import { HabitFormSchema, type HabitFormValues } from '@/lib/schemas/habit-form';
+import { getTodayISO } from '@/lib/today';
 import { storage, StorageKey } from '@/lib/storage';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -589,7 +590,7 @@ const HabitSheet = forwardRef<HabitSheetHandle, HabitSheetProps>(function HabitS
   });
 
   // — Mutations
-  const todayQueryKey = queryKeys.todayView(new Date().toISOString().slice(0, 10));
+  const todayQueryKey = queryKeys.todayView(getTodayISO());
 
   const createMutation = useMutation({
     mutationFn: createHabit,
