@@ -1,7 +1,7 @@
 <div align="center">
 
 <!-- TODO: Replace with actual logo once exported -->
-<img src="./assets/readme/logo.png" alt="Dawnwell" width="120" />
+<img src="./assets/images/logo.png" alt="Dawnwell" width="120" />
 
 # Dawnwell
 
