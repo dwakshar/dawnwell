@@ -28,17 +28,17 @@ Offline-first habit tracker with custom sync engine. Built solo. Shipped to both
 <table>
   <tr>
     <td align="center">
-      <img src="./assets/readme/today.png" alt="Today screen" width="220" />
+      <img src="./assets/today.png" alt="Today screen" width="220" />
       <br />
       <sub>Today — your daily rituals</sub>
     </td>
     <td align="center">
-      <img src="./assets/readme/history.png" alt="History screen" width="220" />
+      <img src="./assets/history.png" alt="History screen" width="220" />
       <br />
       <sub>History — heatmap + completion log</sub>
     </td>
     <td align="center">
-      <img src="./assets/readme/stats.png" alt="Stats screen" width="220" />
+      <img src="./assets/stats.png" alt="Stats screen" width="220" />
       <br />
       <sub>Stats — streaks and weekly rhythm</sub>
     </td>
