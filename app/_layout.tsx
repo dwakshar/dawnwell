@@ -267,6 +267,7 @@ function RootLayoutNav() {
         }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(settings)" />
+        <Stack.Screen name="habit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="auth/sign-in" />
         <Stack.Screen name="auth/verify" />

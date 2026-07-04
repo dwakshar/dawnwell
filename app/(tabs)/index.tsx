@@ -6,8 +6,7 @@ import { AppState, RefreshControl, ScrollView, StyleSheet, View } from 'react-na
 import Animated, { FadeInUp, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
-
-import HabitSheet, { type HabitSheetHandle } from '@/components/habits/habit-sheet';
+import { type Href, useRouter } from 'expo-router';
 import HabitRow from '@/components/today/habit-row';
 import Button from '@/components/ui/button';
 import IconButton from '@/components/ui/icon-button';
@@ -33,13 +32,8 @@ export default function TodayScreen() {
   const { colors, spacing } = useTheme();
   const { stagger, reduced } = useMotion();
   const queryClientInstance = useQueryClient();
-  const sheetRef = useRef<HabitSheetHandle>(null);
+  const router = useRouter();
   const setHasIncompleteHabits = useTodayStore((s) => s.setHasIncompleteHabits);
-
-  const didMount = useRef(false);
-  useEffect(() => {
-    didMount.current = true;
-  }, []);
 
   // ── Reactive greeting with crossfade (3.4) ─────────────────────────────
   const greetingRef = useRef(getGreeting(new Date()));
@@ -207,8 +201,8 @@ export default function TodayScreen() {
   );
 
   const handleEdit = useCallback((habitId: string) => {
-    sheetRef.current?.openEdit(habitId);
-  }, []);
+    router.push({ pathname: '/habit/[id]', params: { id: habitId } } as Href);
+  }, [router]);
 
   const onRefresh = useCallback(() => {
     queryClientInstance.invalidateQueries({ queryKey });
@@ -257,7 +251,7 @@ export default function TodayScreen() {
               icon={Plus}
               variant="filled"
               size="md"
-              onPress={() => sheetRef.current?.openCreate()}
+              onPress={() => router.push('/habit/new' as Href)}
               accessibilityLabel="Create a new habit"
             />
           </View>
@@ -293,7 +287,7 @@ export default function TodayScreen() {
                 variant="primary"
                 size="md"
                 accessibilityLabel="Create your first habit"
-                onPress={() => sheetRef.current?.openCreate()}>
+                onPress={() => router.push('/habit/new' as Href)}>
                 Create a habit
               </Button>
             </View>
@@ -313,7 +307,9 @@ export default function TodayScreen() {
                 onCheck={handleCheck}
                 onUncheck={handleUncheck}
                 onEdit={handleEdit}
-                onAddHabit={() => sheetRef.current?.openCreate(ritual.id)}
+                onAddHabit={() =>
+                  router.push({ pathname: '/habit/new', params: { ritualId: ritual.id } } as Href)
+                }
               />
             </Animated.View>
           );
@@ -321,8 +317,6 @@ export default function TodayScreen() {
 
         <View style={styles.bottomPad} />
       </ScrollView>
-
-      <HabitSheet ref={sheetRef} />
     </SafeAreaView>
   );
 }

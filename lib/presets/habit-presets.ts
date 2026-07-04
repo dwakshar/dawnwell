@@ -81,5 +81,7 @@ export function getDefaultFormValues(ritualId: string | null): HabitFormValues {
     target: 1,
     reminderEnabled: false,
     reminderTime: null,
+    reminderDays: '1111111',
+    graceDaysPerWeek: 1,
   };
 }

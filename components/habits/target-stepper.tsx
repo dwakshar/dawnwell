@@ -17,6 +17,7 @@ export type TargetStepperProps = {
   onChange: (next: number) => void;
   min?: number;
   max?: number;
+  hintText?: string;
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -72,13 +73,15 @@ export default function TargetStepper({
   onChange,
   min = 1,
   max = 12,
+  hintText,
 }: TargetStepperProps) {
   const { colors } = useTheme();
 
   const hint =
-    value > 1
+    hintText ??
+    (value > 1
       ? `You'll tap the habit ${value} times each day to complete it`
-      : 'How many times per day';
+      : 'How many times per day');
 
   return (
     <View style={styles.root}>

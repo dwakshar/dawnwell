@@ -29,8 +29,8 @@ export async function createHabit(input: HabitFormValues): Promise<Habit> {
       color: input.color,
       targetPerDay: input.target,
       reminderTime: input.reminderEnabled ? input.reminderTime : null,
-      reminderDays: '1111111',
-      graceDaysPerWeek: 1,
+      reminderDays: input.reminderDays,
+      graceDaysPerWeek: input.graceDaysPerWeek,
       archivedAt: null,
       orderIndex,
       createdAt: now,
@@ -57,6 +57,8 @@ export async function updateHabit(id: string, input: HabitFormValues): Promise<H
       color: input.color,
       targetPerDay: input.target,
       reminderTime: input.reminderEnabled ? input.reminderTime : null,
+      reminderDays: input.reminderDays,
+      graceDaysPerWeek: input.graceDaysPerWeek,
       updatedAt: Date.now(),
     })
     .where(eq(habits.id, id))
